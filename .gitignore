@@ -1,0 +1,29 @@
+# Node Modules
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Build Outputs
+dist/
+frontend/dist/
+
+# Environment Variables
+.env
+backend/.env
+frontend/.env
+
+# CRITICAL SECRETS & KEYS
+*.json.json
+key.json
+gcs-key.json.json
+backend/key.json
+backend/gcs-key.json.json
+
+# Database & Uploads
+*.db
+backend/pitchnest.db
+backend/uploads/
+uploads/
+
+# OS Files
+.DS_Store
