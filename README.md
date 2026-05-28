@@ -1,90 +1,172 @@
-# 🚀 PitchNest: Your AI Boardroom
+<p align="center">
+  <img src="frontend/public/logo.svg" alt="PitchNest Logo" width="80" />
+</p>
 
-PitchNest is a real-time, multimodal AI agent platform designed to help startup founders practice, refine, and perfect their pitches. Built for the **Gemini Live Agent Challenge**, PitchNest simulates a high-stakes venture capital boardroom or a supportive pitch coaching session using real-time audio, vision, and screen-sharing capabilities.
+<h1 align="center">PitchNest</h1>
+<p align="center">
+  <strong>AI-Powered Pitch Simulation Platform for Startup Founders</strong>
+</p>
 
-[![Built with Gemini](https://img.shields.io/badge/Built%20with-Gemini%202.0%20Flash-blue)](https://deepmind.google/technologies/gemini/)
-[![Tech Stack](https://img.shields.io/badge/Tech-React%20%7C%20Node.js%20%7C%20WebSockets-success)](#)
-
----
-
-## 💡 The Problem & Solution
-Founders often struggle to get high-quality, realistic feedback on their pitches before facing real investors. 
-
-**PitchNest solves this by providing a living, breathing AI panel.** Instead of a basic text chatbot, PitchNest uses the Gemini Live API to create an interactive voice agent that watches your pitch deck, monitors your body language through your webcam, and converses with you in real-time.
-
-## ✨ Key Features (Live Agent Track)
-* **🎙️ Real-Time Conversational AI:** Talk naturally with your AI panel. The agent handles interruptions gracefully and responds with ultra-low latency.
-* **👁️ Multimodal Vision (Face & Deck):** Gemini actively processes a live 4fps feed of your webcam and screen share. It can read your slides, catch you if you read from a script, and tell you to move to the next slide if you take too long.
-* **🧠 Dynamic Personas:** * **Marcus (The VC):** A ruthless, fast-paced lead investor who demands hard numbers and fact-checks your market claims live using Google Search.
-  * **Riley (The Coach):** A supportive strategist who helps you refine your value proposition.
-* **📊 Post-Pitch Analytics:** Once the session ends, Gemini evaluates the transcript to generate a comprehensive JSON report, scoring your delivery, clarity, scalability, and investor readiness.
+<p align="center">
+  <a href="#features"><img src="https://img.shields.io/badge/AI-Gemini%202.0%20Flash-blue" alt="AI Model" /></a>
+  <a href="#tech-stack"><img src="https://img.shields.io/badge/Stack-React%20%7C%20Node.js%20%7C%20Supabase-success" alt="Tech Stack" /></a>
+  <a href="#license"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License" /></a>
+</p>
 
 ---
 
-## 🏗️ System Architecture
-* **Frontend:** React (Vite), TailwindCSS, Recharts, Framer Motion.
-* **Backend:** Node.js, Express, Better-SQLite3.
-* **Real-Time Engine:** WebSockets (`ws`) bridging the frontend audio/video stream directly to the `BidiGenerateContent` Gemini API.
-* **Cloud Storage:** Google Cloud Storage (GCS) for secure video recording and pitch deck hosting.
-* **AI Models:** * `gemini-2.5-flash-native-audio-preview-12-2025` (For the Live WebSocket Agent)
-  * `gemini-2.0-flash` (For the REST API post-pitch JSON evaluation)
+## Overview
 
----
+PitchNest is a real-time, multimodal AI platform that simulates a high-stakes venture capital boardroom. Founders can practice, refine, and perfect their pitches by presenting to AI investor personas that listen, ask tough questions, and debate ideas — all in real-time using voice, video, and screen sharing.
 
-## 🛠️ Local Spin-Up Instructions (For Judges)
+## Features
 
-To run PitchNest locally and test the live multimodal agent features:
+- **Real-Time Conversational AI** — Talk naturally with AI investor personas. The system handles interruptions gracefully and responds with ultra-low latency via WebSockets.
+- **Multimodal Vision** — Gemini processes a live feed of your webcam and screen share. It reads your slides, catches you reading from a script, and provides contextual feedback.
+- **Dynamic Investor Personas** — Multiple AI personas with distinct personalities (e.g., a ruthless VC demanding hard numbers vs. a supportive coach refining your narrative).
+- **Deck-Aware Intelligence** — Upload your pitch deck (PDF) and the AI reads it, asking slide-specific questions about TAM, unit economics, and go-to-market strategy.
+- **Post-Pitch Analytics** — After each session, receive a comprehensive evaluation report scoring delivery, clarity, scalability, and investor readiness.
+- **Session Recording & Replay** — Review past pitch sessions with full transcript and AI commentary.
+- **Secure Sharing** — Share pitch reports with co-founders, mentors, or accelerators via unique shareable links.
 
-### 1. Prerequisites
-* Node.js (v18 or higher)
-* A Gemini API Key
-* A Google Cloud Storage Bucket (optional, for video uploads)
+## Tech Stack
 
-### 2. Clone the Repository
-\`\`\`bash
-git clone https://github.com/immanex/PitchNest-Live-Agent.git
-cd PitchNest-Live-Agent
-\`\`\`
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React, Vite, TypeScript, Tailwind CSS v4, Framer Motion, Recharts |
+| **Backend** | Node.js, Express, TypeScript |
+| **AI Engine** | Google Gemini 2.0 Flash (Live WebSocket + REST API) |
+| **Database** | Supabase (PostgreSQL) |
+| **Auth** | JWT-based authentication |
+| **Real-Time** | WebSockets (`ws`) bridging audio/video to Gemini Live API |
 
-### 3. Install Dependencies
-You need to install dependencies for both the frontend and backend.
-\`\`\`bash
-# Install backend dependencies
+## Project Structure
+
+```
+PitchNest-Live/
+├── frontend/               # React SPA (Vite)
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── contexts/       # Auth, Theme, Socket providers
+│   │   ├── pages/          # Route-level page components
+│   │   └── lib/            # Utilities
+│   └── public/             # Static assets
+├── backend/                # Node.js API server
+│   ├── src/
+│   │   ├── controllers/    # Route handlers
+│   │   ├── services/       # AI, storage, evaluation logic
+│   │   ├── sockets/        # WebSocket handlers (Gemini Live)
+│   │   ├── middleware/      # Auth, error handling
+│   │   └── config/         # Supabase, environment config
+│   └── server.ts           # Entry point
+└── README.md
+```
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js** v18 or higher
+- **npm** v9 or higher
+- A **Gemini API Key** ([Get one here](https://aistudio.google.com/app/apikey))
+- A **Supabase** project ([Create one here](https://supabase.com))
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/immanex/PitchNest-Live.git
+   cd PitchNest-Live
+   ```
+
+2. **Install dependencies**
+   ```bash
+   # Backend
+   cd backend
+   npm install
+
+   # Frontend
+   cd ../frontend
+   npm install
+   ```
+
+3. **Configure environment variables**
+
+   Copy the example env file and fill in your keys:
+   ```bash
+   cd backend
+   cp .env.example .env
+   ```
+
+   Required variables:
+   | Variable | Description |
+   |----------|-------------|
+   | `GEMINI_API_KEY` | Your Google Gemini API key |
+   | `SUPABASE_URL` | Your Supabase project URL |
+   | `SUPABASE_ANON_KEY` | Your Supabase anonymous key |
+   | `JWT_SECRET` | A strong random secret for JWT signing |
+   | `ALLOWED_ORIGIN` | Frontend URL (default: `http://localhost:5173`) |
+
+4. **Set up the database**
+
+   Run the following SQL in your Supabase SQL editor to create the required tables:
+
+   - `users` — User accounts and profiles
+   - `sessions` — Pitch session metadata and scores
+   - `decks` — Uploaded pitch deck references
+   - `waitlist` — Early access waitlist entries
+
+### Running Locally
+
+Open two terminal windows:
+
+**Terminal 1 — Backend:**
+```bash
 cd backend
-npm install
+npm run dev
+```
 
-# Install frontend dependencies
-cd ../frontend
-npm install
-\`\`\`
-
-### 4. Environment Variables
-Create a `.env` file in the `backend` directory and add the following keys:
-\`\`\`env
-PORT=3000
-GEMINI_API_KEY=your_gemini_api_key_here
-GCS_BUCKET_NAME=your_gcs_bucket_name_here
-\`\`\`
-
-### 5. Start the Application
-Open two terminal windows.
-
-**Terminal 1 (Backend):**
-\`\`\`bash
-cd backend
-npm start
-\`\`\`
-
-**Terminal 2 (Frontend):**
-\`\`\`bash
+**Terminal 2 — Frontend:**
+```bash
 cd frontend
 npm run dev
-\`\`\`
+```
 
-### 6. Pitch!
-Open `http://localhost:5173` in your browser. Allow camera and microphone permissions, select a pitch mode, and step into the boardroom!
+Open [http://localhost:5173](http://localhost:5173) in your browser. Allow camera and microphone permissions when prompted.
+
+## Usage
+
+1. **Sign up** and complete the onboarding flow
+2. **Upload your pitch deck** (PDF format)
+3. **Start a pitch session** — select difficulty level and investor personas
+4. **Present your pitch** using voice and/or video
+5. **Receive feedback** — get scored on delivery, clarity, and investor readiness
+6. **Review analytics** — track improvement across sessions
+
+## Environment Variables
+
+See [`.env.example`](backend/.env.example) for a complete list of configuration options.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'Add your feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+## Contact
+
+- **Email:** pitchnest@gmail.com
+- **WhatsApp:** [+234 905 871 8400](https://wa.me/2349058718400)
+- **Twitter/X:** [@PitchNest](https://x.com/PitchNest)
 
 ---
 
-## 🏆 Hackathon Learnings
-Building PitchNest taught us the incredible power of state-machine prompting for Live Agents. Transitioning from a turn-based chatbot to an interruptible, vision-enabled WebRTC agent required deep optimizations in buffer management and prompt engineering to keep the AI from sounding "robotic." We learned how to give the AI true agency by allowing it to use Google Search tools dynamically while holding a conversation.
+<p align="center">
+  Built with ❤️ by the PitchNest team
+</p>
