@@ -75,7 +75,7 @@ PitchNest-Live/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/immanex/PitchNest-Live.git
+   git clone https://github.com/PitchNest-Lab/PitchNest-Live.git
    cd PitchNest-Live
    ```
 
