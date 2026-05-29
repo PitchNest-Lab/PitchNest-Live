@@ -1,4 +1,98 @@
-﻿
+
+// Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\App.tsx
+
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import AppLayout from './components/AppLayout';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Onboarding from './pages/Onboarding';
+import Dashboard from './pages/Dashboard';
+import Analytics from './pages/Analytics';
+import SettingsPage from './pages/SettingsPage';
+import LivePitchRoom from './pages/LivePitchRoom';
+import PostPitchReport from './pages/PostPitchReport';
+import PrePitchSetup from './pages/PrePitchSetup';
+import PitchDecksManagement from './pages/PitchDecksManagement';
+import PitchReplayScreen from './pages/PitchReplayScreen';
+import MyPitchesArchive from './pages/MyPitchesArchive';
+import { SocketProvider } from './contexts/SocketContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+export default function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <ThemeProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Protected Routes (Wrapped in AppLayout with Sidebar) */}
+            <Route element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }>
+              <Route path="/dashboard" element={
+                <ErrorBoundary><Dashboard /></ErrorBoundary>
+              } />
+              <Route path="/analytics" element={
+                <ErrorBoundary><Analytics /></ErrorBoundary>
+              } />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/report" element={
+                <ErrorBoundary><PostPitchReport /></ErrorBoundary>
+              } />
+              <Route path="/setup" element={<PrePitchSetup />} />
+              <Route path="/decks" element={<PitchDecksManagement />} />
+              <Route path="/replay" element={
+                <ErrorBoundary><PitchReplayScreen /></ErrorBoundary>
+              } />
+              <Route path="/archive" element={<MyPitchesArchive />} />
+            </Route>
+
+            {/* Special Full-screen Routes (No Sidebar) */}
+            
+            <Route path="/onboarding" element={
+              <ProtectedRoute>
+                <Onboarding />
+              </ProtectedRoute>
+            } />
+
+            {/* LivePitchRoom — SocketProvider wraps ONLY this route, not the whole app */}
+            <Route path="/room" element={
+              <ProtectedRoute>
+                <ErrorBoundary>
+                  <SocketProvider>
+                    <LivePitchRoom />
+                  </SocketProvider>
+                </ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            
+            {/* Safety Catch: Redirect old /live links to /room */}
+            <Route path="/live" element={<Navigate to="/room" replace />} />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ThemeProvider>
+      </AuthProvider>
+    </Router>
+  );
+}
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\components\AppLayout.tsx
 
 import React, { useState, useEffect } from 'react';
@@ -13,14 +107,16 @@ import {
   Bell,
   Search,
   LogOut,
-  Rocket
+  Rocket,
+  Menu,
+  X
 } from 'lucide-react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 
-const SidebarItem = ({ icon: Icon, label, path, active }: { icon: any, label: string, path: string, active: boolean }) => (
-  <Link to={path} className={cn(
+const SidebarItem = ({ icon: Icon, label, path, active, onClick }: { icon: any, label: string, path: string, active: boolean, onClick?: () => void }) => (
+  <Link to={path} onClick={onClick} className={cn(
     "flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200",
     active 
       ? "bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 font-medium" 
@@ -34,8 +130,9 @@ const SidebarItem = ({ icon: Icon, label, path, active }: { icon: any, label: st
 export default function AppLayout() {
   const location = useLocation();
   const [logoError, setLogoError] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // ðŸ”¥ DATA FIX: Dynamic User Profile
+  // 🔥 DATA FIX: Dynamic User Profile
   const [userData, setUserData] = useState<{name: string, email?: string}>({ name: "Founder" });
 
   useEffect(() => {
@@ -44,6 +141,11 @@ export default function AppLayout() {
       try { setUserData(JSON.parse(storedUser)); } catch (e) {}
     }
   }, []);
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -56,33 +158,56 @@ export default function AppLayout() {
 
   const handleLogout = () => {
     localStorage.removeItem("user");
-    // Usually handled by AuthContext, but clearing storage is a good fallback
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 font-sans transition-colors duration-300">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-slate-200 dark:border-zinc-800 flex flex-col p-6 fixed h-full z-10 transition-colors duration-300">
-        <Link to="/" className="flex items-center gap-3 mb-10">
-          <div className={cn(
-            "w-10 h-10 flex items-center justify-center overflow-hidden rounded-xl",
-            logoError && "bg-sky-500 text-white shadow-lg shadow-sky-200"
-          )}>
-            {!logoError ? (
-              <img 
-                src="/PitchNest Logo.png" 
-                alt="PitchNest Logo" 
-                className="w-full h-full object-contain"
-                onError={() => setLogoError(true)}
-              />
-            ) : (
-              <Rocket size={24} fill="currentColor" />
-            )}
-          </div>
-          <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">PitchNest</span>
-        </Link>
+    <div className="flex min-h-screen bg-slate-50 dark:bg-zinc-950 font-sans transition-colors duration-300 overflow-x-hidden">
+      
+      {/* Mobile Drawer Overlay */}
+      <div 
+        className={cn(
+          "fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300",
+          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )} 
+        onClick={() => setIsMobileMenuOpen(false)} 
+      />
 
-        <nav className="flex flex-col gap-1 flex-1">
+      {/* Sidebar Drawer */}
+      <aside className={cn(
+        "w-64 bg-white dark:bg-zinc-900 border-r border-slate-200 dark:border-zinc-800 flex flex-col p-6 fixed h-full z-50 transition-all duration-300 ease-in-out lg:translate-x-0 lg:left-0",
+        isMobileMenuOpen ? "translate-x-0 left-0" : "-translate-x-full"
+      )}>
+        
+        {/* Sidebar Header with Close button for mobile */}
+        <div className="flex justify-between items-center mb-10 shrink-0">
+          <Link to="/" className="flex items-center gap-3">
+            <div className={cn(
+              "w-10 h-10 flex items-center justify-center overflow-hidden rounded-xl",
+              logoError && "bg-sky-500 text-white shadow-lg shadow-sky-200"
+            )}>
+              {!logoError ? (
+                <img 
+                  src="/PitchNest Logo.png" 
+                  alt="PitchNest Logo" 
+                  className="w-full h-full object-contain"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <Rocket size={24} fill="currentColor" />
+              )}
+            </div>
+            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">PitchNest</span>
+          </Link>
+
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="lg:hidden p-2 text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <nav className="flex flex-col gap-1 flex-1 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => (
             <SidebarItem 
               key={item.path}
@@ -90,6 +215,7 @@ export default function AppLayout() {
               label={item.label}
               path={item.path}
               active={location.pathname === item.path}
+              onClick={() => setIsMobileMenuOpen(false)}
             />
           ))}
           <div className="mt-auto">
@@ -98,22 +224,23 @@ export default function AppLayout() {
               label="Settings" 
               path="/settings" 
               active={location.pathname === "/settings"}
+              onClick={() => setIsMobileMenuOpen(false)}
             />
           </div>
         </nav>
 
-        <div className="mt-6 p-4 bg-gradient-to-br from-indigo-600 to-sky-500 rounded-2xl text-white relative overflow-hidden group">
+        <div className="mt-6 p-4 bg-gradient-to-br from-indigo-600 to-sky-500 rounded-2xl text-white relative overflow-hidden group shrink-0">
           <div className="relative z-10">
             <span className="text-[10px] font-bold uppercase tracking-widest text-white/70">Pro Plan</span>
             <p className="text-xs mt-1 text-white font-medium">Unlimited AI Analysis</p>
-            <Link to="/settings" className="mt-4 block w-full py-2 bg-white text-sky-600 text-center text-xs font-bold rounded-lg hover:bg-sky-50 transition-colors">
+            <Link to="/settings" onClick={() => setIsMobileMenuOpen(false)} className="mt-4 block w-full py-2 bg-white text-sky-600 text-center text-xs font-bold rounded-lg hover:bg-sky-50 transition-colors">
               Manage Subscription
             </Link>
           </div>
           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-110 transition-transform" />
         </div>
 
-        <div className="mt-6 flex items-center gap-3 p-2 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-slate-100 dark:border-zinc-800">
+        <div className="mt-6 flex items-center gap-3 p-2 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-slate-100 dark:border-zinc-800 shrink-0">
           <img 
             src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.name}`} 
             alt="Avatar" 
@@ -130,18 +257,52 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 ml-64 p-8">
-        <header className="flex justify-between items-center mb-10">
-          <div className="relative w-96">
+      {/* Main Content Area */}
+      <main className="flex-1 lg:ml-64 min-h-screen flex flex-col p-4 md:p-8 transition-all duration-300">
+        
+        {/* Top Header */}
+        <header className="flex flex-col md:flex-row gap-4 md:items-center justify-between mb-8 md:mb-10">
+          <div className="flex items-center justify-between w-full md:w-auto">
+            {/* Hamburger Button for mobile */}
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden p-2 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 transition-colors cursor-pointer flex items-center justify-center"
+            >
+              <Menu size={22} />
+            </button>
+
+            {/* Logo in top header (visible on mobile only) */}
+            <div className="lg:hidden flex items-center gap-2 mx-auto">
+              <div className="w-8 h-8 flex items-center justify-center overflow-hidden rounded-lg bg-sky-500 text-white shadow-md">
+                <Rocket size={18} fill="currentColor" />
+              </div>
+              <span className="font-bold text-slate-900 dark:text-zinc-100">PitchNest</span>
+            </div>
+
+            {/* User Avatar on mobile top header */}
+            <div className="lg:hidden flex items-center gap-3">
+              <ThemeToggle />
+              <img 
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.name}`} 
+                alt="Avatar" 
+                className="w-8 h-8 rounded-full border border-slate-250 dark:border-zinc-800 bg-sky-100"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+
+          {/* Search bar - full-width on mobile, bounded on desktop */}
+          <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" size={18} />
             <input 
               type="text" 
               placeholder="Search sessions, decks or reports..." 
-              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 dark:text-zinc-100 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 dark:text-zinc-100 transition-all shadow-sm"
             />
           </div>
-          <div className="flex items-center gap-4">
+
+          {/* Desktop Right Header Tools */}
+          <div className="hidden lg:flex items-center gap-4">
             <ThemeToggle />
             <div className="flex items-center gap-6">
               <button className="relative p-2 text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">
@@ -164,7 +325,10 @@ export default function AppLayout() {
           </div>
         </header>
 
-        <Outlet />
+        {/* Content Outlet */}
+        <div className="flex-1">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
@@ -200,7 +364,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ðŸš¨ ErrorBoundary caught an error:", error, errorInfo);
+    console.error("🚨 ErrorBoundary caught an error:", error, errorInfo);
   }
 
   handleGoBack = () => {
@@ -225,7 +389,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               Something went wrong
             </h1>
             <p className="text-slate-500 dark:text-zinc-400 mb-8 leading-relaxed">
-              An unexpected error occurred. Don't worry â€” your data is safe. 
+              An unexpected error occurred. Don't worry — your data is safe. 
               You can try again or go back to the dashboard.
             </p>
 
@@ -260,6 +424,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 }
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\components\ProtectedRoute.tsx
 
 import React from 'react';
@@ -271,7 +436,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  // ðŸ”¥ FIX 1: Use 'user' to match the new AuthContext
+  // 🔥 FIX 1: Use 'user' to match the new AuthContext
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
@@ -308,6 +473,7 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
     />
   );
 }
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\components\ThemeToggle.tsx
 
@@ -353,6 +519,7 @@ export function ThemeToggle() {
     </button>
   );
 }
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\contexts\AuthContext.tsx
 
@@ -404,13 +571,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem('token');
           }
         } else {
-          // Token expired or invalid â€” clear everything
+          // Token expired or invalid — clear everything
           localStorage.removeItem('user');
           localStorage.removeItem('token');
         }
       })
       .catch(() => {
-        // Network error â€” trust local storage to avoid locking out offline users
+        // Network error — trust local storage to avoid locking out offline users
         try {
           setUser(JSON.parse(storedUser));
           setToken(storedToken);
@@ -457,7 +624,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * Authenticated fetch wrapper â€” automatically attaches the JWT Bearer token
+   * Authenticated fetch wrapper — automatically attaches the JWT Bearer token
    * to all API requests. Use this instead of raw fetch() for protected endpoints.
    */
   const authFetch = useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
@@ -538,32 +705,32 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [socket, setSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    console.log("ðŸ”Œ Connecting to PitchNest Brain...");
+    console.log("🔌 Connecting to PitchNest Brain...");
     
-    // âœ… DYNAMIC URL FIX: Works seamlessly for both Localhost and Google Cloud!
+    // ✅ DYNAMIC URL FIX: Works seamlessly for both Localhost and Google Cloud!
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const WS_URL = isLocal 
       ? `ws://${window.location.hostname}:3000` 
-      : `${protocol}//${host}`;
+      : `wss://pitchnest-live.onrender.com`;
 
     const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
-      console.log('âœ… Connected to PitchNest Brain');
+      console.log('✅ Connected to PitchNest Brain');
       setIsConnected(true);
       setSocket(ws);
     };
 
     ws.onclose = () => {
-      console.log('âŒ Disconnected from Brain');
+      console.log('❌ Disconnected from Brain');
       setIsConnected(false);
       setSocket(null);
     };
 
     ws.onerror = (error) => {
-      console.error('âš ï¸ WebSocket Error:', error);
+      console.error('⚠️ WebSocket Error:', error);
     };
 
     return () => {
@@ -622,6 +789,7 @@ export function useTheme() {
   }
   return context;
 }
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\hooks\useLiveAudio.ts
 
@@ -779,6 +947,7 @@ export const useLiveAudio = (
   return { volume, startCapture, playChunk, stopPlayback, cleanup };
 };
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\hooks\useMediaRecorder.ts
 
 import { useState, useRef, useCallback } from 'react';
@@ -793,7 +962,7 @@ export const useMediaRecorder = () => {
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: true,
-        // ðŸš¨ FIX: Advanced Audio Constraints added here!
+        // 🚨 FIX: Advanced Audio Constraints added here!
         audio: {
           echoCancellation: true, // Stops the mic from hearing the AI speaking
           noiseSuppression: true, // Blocks fans, typing, and background hums
@@ -984,6 +1153,7 @@ export const useScreenCapture = (onFrame?: (base64: string, slideIndex: number) 
   };
 };
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\hooks\useSessionRecorder.ts
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -1073,6 +1243,7 @@ export const useSessionRecorder = (
 
   return { saveSession, sessionId: sessionIdRef.current };
 };
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\hooks\useSocket.ts
 
@@ -1327,6 +1498,7 @@ Rules of Interaction:
   };
 };
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\lib\sentiment.ts
 
 import { SentimentScores } from '../types';
@@ -1362,6 +1534,7 @@ export const mapSentimentToScore = (text: string): SentimentScores => {
   };
 };
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\lib\utils.ts
 
 import { clsx, type ClassValue } from 'clsx';
@@ -1387,6 +1560,17 @@ export function createFormData(files: File[], metadata?: Record<string, any>): F
 
   return formData;
 }
+
+
+// Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\main.tsx
+
+import {createRoot} from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
+
+createRoot(document.getElementById('root')!).render(
+  <App />
+);
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\pages\Analytics.tsx
 
@@ -1634,7 +1818,7 @@ export default function Analytics() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard isLoading={isLoading} title="Avg. Investment Readiness" value={hasData ? avgReadiness.toString() : "â€”"} subtitle={hasData ? "/100" : ""} progress={hasData ? avgReadiness : undefined} trend={hasData && avgReadiness >= 70 ? "Strong" : undefined} tooltip="Based on AI analysis of your historical pitch sessions." />
+          <StatCard isLoading={isLoading} title="Avg. Investment Readiness" value={hasData ? avgReadiness.toString() : "—"} subtitle={hasData ? "/100" : ""} progress={hasData ? avgReadiness : undefined} trend={hasData && avgReadiness >= 70 ? "Strong" : undefined} tooltip="Based on AI analysis of your historical pitch sessions." />
           <StatCard isLoading={isLoading} title="Total Sessions" value={totalSessions.toString()} subtitle="pitches" tooltip="Total number of recorded pitches sent to the AI panel." />
           <StatCard isLoading={isLoading} title="Most Improved" value={mostImproved} tooltip="The metric that has shown the highest growth trajectory." />
           <StatCard isLoading={isLoading} title="Data Status" value={hasData ? "Live" : "Waiting"} trend={hasData ? "Synced" : undefined} tooltip="This dashboard is pulling processed AI evaluations." />
@@ -1900,7 +2084,7 @@ export default function Dashboard() {
       >
         <div className="relative z-10 max-w-2xl">
           <h2 className="text-4xl font-bold mb-4 flex items-center gap-3">
-            Welcome back, {userName}! ðŸš€
+            Welcome back, {userName}! 🚀
           </h2>
           <p className="text-white/80 text-lg mb-8 leading-relaxed">
             {totalPitches > 0 
@@ -1921,9 +2105,9 @@ export default function Dashboard() {
       {/* Dynamic Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "Average Pitch Score", value: totalPitches > 0 ? avgScore.toString() : "â€”", suffix: totalPitches > 0 ? "/100" : "", trend: "", icon: BarChart3, color: "text-sky-500" },
+          { label: "Average Pitch Score", value: totalPitches > 0 ? avgScore.toString() : "—", suffix: totalPitches > 0 ? "/100" : "", trend: "", icon: BarChart3, color: "text-sky-500" },
           { label: "Total Pitches", value: totalPitches.toString(), suffix: "Sessions", trend: "", icon: Target, color: "text-indigo-500" },
-          { label: "Best Score", value: totalPitches > 0 ? bestScore.toString() : "â€”", suffix: totalPitches > 0 ? "/100" : "", trend: "", icon: CheckCircle2, color: "text-emerald-500" },
+          { label: "Best Score", value: totalPitches > 0 ? bestScore.toString() : "—", suffix: totalPitches > 0 ? "/100" : "", trend: "", icon: CheckCircle2, color: "text-emerald-500" },
           { label: "AI Improvements", value: totalPitches > 0 ? "Ready" : "Start", suffix: totalPitches > 0 ? "Pending Action" : "Your first pitch", trend: "", icon: Sparkles, color: "text-amber-500" }
         ].map((stat, i) => (
           <motion.div 
@@ -2112,16 +2296,17 @@ export default function ForgotPassword() {
   );
 }
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\pages\LandingPage.tsx
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Rocket, PlayCircle, ArrowRight, Users, MessageSquare, BarChart3, ShieldCheck, HelpCircle, FileText, Target, TrendingUp, FileCheck, Star, ChevronDown, ChevronUp, Zap, Phone, Mail, ExternalLink } from 'lucide-react';
+import { Rocket, PlayCircle, ArrowRight, Users, MessageSquare, BarChart3, ShieldCheck, HelpCircle, FileText, Target, TrendingUp, FileCheck, Star, ChevronDown, ChevronUp, Zap, Phone, Mail, ExternalLink, Menu, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { ThemeToggle } from '../components/ThemeToggle';
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────────────── data ───────────────── */
 
 const testimonials = [
   { name: "Jessica Martinez", initials: "JM", company: "HealthTech AI", quote: "PitchNest helped me identify and fix critical weaknesses before my Series A. We closed $8M.", result: "Raised $8M Series A", gradient: "from-purple-500 to-blue-500" },
@@ -2153,20 +2338,21 @@ const readinessMetrics = [
 
 const faqs = [
   { q: "What is PitchNest?", a: "PitchNest is an AI-powered platform that simulates real investor pitch sessions. You present your startup idea to a panel of AI investors who listen, ask tough questions, and give you a detailed performance report." },
-  { q: "How realistic are the AI investors?", a: "Our AI panel consists of distinct personas â€” a skeptic lead partner, a numbers-obsessed analyst, and a technical expert. They react dynamically to what you say, challenge your claims, and even debate among themselves, just like a real VC boardroom." },
+  { q: "How realistic are the AI investors?", a: "Our AI panel consists of distinct personas — a skeptic lead partner, a numbers-obsessed analyst, and a technical expert. They react dynamically to what you say, challenge your claims, and even debate among themselves, just like a real VC boardroom." },
   { q: "Can I upload my pitch deck?", a: "Yes! Upload your pitch deck as a PDF and the AI investors will actually read and reference it during the session, asking specific questions about your slides, financials, and market data." },
   { q: "Is PitchNest free?", a: "We're currently in early access. Join the waitlist to secure your spot and get notified when we launch. Early adopters will receive exclusive benefits." },
-  { q: "What kind of feedback do I get?", a: "You receive a comprehensive evaluation report covering pitch clarity, market knowledge, financial literacy, response quality, and overall fundraising readiness â€” with specific, actionable improvement suggestions." },
+  { q: "What kind of feedback do I get?", a: "You receive a comprehensive evaluation report covering pitch clarity, market knowledge, financial literacy, response quality, and overall fundraising readiness — with specific, actionable improvement suggestions." },
   { q: "Can I practice multiple times?", a: "Absolutely. Each session is saved with a full transcript replay and evaluation report so you can track your improvement over time." },
 ];
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────────────── component ───────────────── */
 
 export default function LandingPage() {
   const [logoError, setLogoError] = useState(false);
   const [footerLogoError, setFooterLogoError] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -2198,8 +2384,8 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 font-sans text-slate-900 dark:text-zinc-100 transition-colors duration-300 overflow-x-hidden">
 
-      {/* â”€â”€ Navbar â”€â”€ */}
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex justify-between items-center">
+      {/* ── Navbar ── */}
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex justify-between items-center relative z-50">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className={cn("w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center overflow-hidden rounded-xl", logoError && "bg-sky-500 text-white shadow-lg shadow-sky-200")}>
             {!logoError ? <img src="/PitchNest Logo.png" alt="PitchNest" className="w-full h-full object-contain" onError={() => setLogoError(true)} /> : <Rocket size={20} fill="currentColor" />}
@@ -2215,18 +2401,48 @@ export default function LandingPage() {
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
           <ThemeToggle />
-          {isLoggedIn ? (
-            <Link to="/dashboard" className="px-3 py-2 sm:px-5 sm:py-2.5 bg-sky-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-sky-200 dark:shadow-sky-500/20 hover:bg-sky-600 transition-all">Dashboard</Link>
-          ) : (
-            <>
-              <Link to="/login" className="hidden sm:block text-sm font-bold hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Login</Link>
-              <Link to="/signup" className="px-3 py-2 sm:px-5 sm:py-2.5 bg-sky-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-sky-200 dark:shadow-sky-500/20 hover:bg-sky-600 transition-all">Start Pitching</Link>
-            </>
-          )}
+          <div className="hidden md:flex items-center gap-4">
+            {isLoggedIn ? (
+              <Link to="/dashboard" className="px-5 py-2.5 bg-sky-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-sky-200 dark:shadow-sky-500/20 hover:bg-sky-600 transition-all">Dashboard</Link>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm font-bold hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Login</Link>
+                <Link to="/signup" className="px-5 py-2.5 bg-sky-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-sky-200 dark:shadow-sky-500/20 hover:bg-sky-600 transition-all">Start Pitching</Link>
+              </>
+            )}
+          </div>
+          <button 
+            className="md:hidden p-2 text-slate-600 dark:text-zinc-400"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
       </nav>
 
-      {/* â”€â”€ Hero â”€â”€ */}
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden absolute top-[72px] left-0 right-0 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800 shadow-xl z-40 p-4 flex flex-col gap-4">
+          <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="text-base font-medium text-slate-600 dark:text-zinc-400 py-2">Features</a>
+          <a href="#why-pitchnest" onClick={() => setIsMobileMenuOpen(false)} className="text-base font-medium text-slate-600 dark:text-zinc-400 py-2">Why PitchNest</a>
+          <a href="#insights" onClick={() => setIsMobileMenuOpen(false)} className="text-base font-medium text-slate-600 dark:text-zinc-400 py-2">Insights</a>
+          <a href="#stories" onClick={() => setIsMobileMenuOpen(false)} className="text-base font-medium text-slate-600 dark:text-zinc-400 py-2">Stories</a>
+          <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="text-base font-medium text-slate-600 dark:text-zinc-400 py-2 border-b border-slate-100 dark:border-zinc-800/50 pb-4">FAQ</a>
+          
+          <div className="flex flex-col gap-3 pt-2">
+            {isLoggedIn ? (
+              <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="w-full text-center px-5 py-3 bg-sky-500 text-white text-base font-bold rounded-xl shadow-lg shadow-sky-200 dark:shadow-sky-500/20">Dashboard</Link>
+            ) : (
+              <>
+                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="w-full text-center px-5 py-3 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 text-base font-bold rounded-xl">Login</Link>
+                <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)} className="w-full text-center px-5 py-3 bg-sky-500 text-white text-base font-bold rounded-xl shadow-lg shadow-sky-200 dark:shadow-sky-500/20">Start Pitching</Link>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Hero ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-12 pb-10 sm:pb-16 grid lg:grid-cols-2 gap-6 sm:gap-12 items-center">
         <div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -2249,12 +2465,12 @@ export default function LandingPage() {
             </a>
           </motion.div>
 
-          {/* Waitlist â€” Hero */}
+          {/* Waitlist — Hero */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.45 }}>
           {waitlistStatus === 'success' ? (
             <div className="mt-6 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-4 py-3 rounded-2xl flex items-center gap-3 max-w-md">
               <ShieldCheck size={18} className="shrink-0" />
-              <span className="text-sm font-bold">You are on the list! We will notify you for early access. ðŸŽ‰</span>
+              <span className="text-sm font-bold">You are on the list! We will notify you for early access. 🎉</span>
             </div>
           ) : (
             <div className="mt-6">
@@ -2271,7 +2487,7 @@ export default function LandingPage() {
           </motion.div>
         </div>
 
-        {/* Hero visual â€” hidden on very small screens */}
+        {/* Hero visual — hidden on very small screens */}
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative hidden sm:block">
           <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl shadow-indigo-200 dark:shadow-sky-500/10 border-4 sm:border-8 border-slate-900/5 dark:border-white/5">
             <div className="w-full aspect-[4/3] bg-gradient-to-br from-indigo-500/20 via-sky-500/10 to-purple-500/20 flex items-center justify-center">
@@ -2306,7 +2522,7 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* â”€â”€ Stories (Social Proof) â”€â”€ */}
+      {/* ── Stories (Social Proof) ── */}
       <section id="stories" className="bg-slate-50 dark:bg-zinc-900/50 py-10 sm:py-14 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-6 sm:mb-8">
@@ -2324,7 +2540,7 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Testimonials â€” swipe carousel */}
+          {/* Testimonials — swipe carousel */}
           <div className="relative overflow-hidden">
             <div
               className="flex transition-transform duration-700 ease-in-out"
@@ -2359,7 +2575,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* â”€â”€ Features â€” 4 columns â”€â”€ */}
+      {/* ── Features — 4 columns ── */}
       <section id="features" className="py-10 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-6 sm:mb-10">
@@ -2394,7 +2610,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* â”€â”€ How It Works â€” 3 columns â”€â”€ */}
+      {/* ── How It Works — 3 columns ── */}
       <section id="how-it-works" className="py-10 sm:py-14 bg-slate-50 dark:bg-zinc-900/50 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <h2 className="text-xl sm:text-3xl font-bold text-center mb-6 sm:mb-10">Master your pitch in 3 steps</h2>
@@ -2415,7 +2631,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* â”€â”€ Why PitchNest â€” 2/3 columns â”€â”€ */}
+      {/* ── Why PitchNest — 2/3 columns ── */}
       <section id="why-pitchnest" className="py-10 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-6 sm:mb-10">
@@ -2427,7 +2643,7 @@ export default function LandingPage() {
             {[
               { icon: Zap, title: "Instant feedback loop", desc: "Get real-time, AI-powered critiques the moment you finish speaking.", accent: "text-amber-500 bg-amber-50 dark:bg-amber-900/20" },
               { icon: Users, title: "Multi-persona simulation", desc: "Three distinct investor archetypes that argue, interrupt, and push back like real VCs.", accent: "text-sky-500 bg-sky-50 dark:bg-sky-900/20" },
-              { icon: ShieldCheck, title: "Safe space to fail", desc: "Stumble on tough questions and recover â€” without burning your one shot with a real investor.", accent: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" },
+              { icon: ShieldCheck, title: "Safe space to fail", desc: "Stumble on tough questions and recover — without burning your one shot with a real investor.", accent: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" },
               { icon: FileText, title: "Deck-aware intelligence", desc: "The AI reads your deck and asks slide-specific questions about TAM, unit economics, and GTM.", accent: "text-violet-500 bg-violet-50 dark:bg-violet-900/20" },
               { icon: TrendingUp, title: "Track your progress", desc: "Every session is recorded and scored. Watch your confidence and readiness improve over time.", accent: "text-rose-500 bg-rose-50 dark:bg-rose-900/20" },
               { icon: BarChart3, title: "Fundraising-ready reports", desc: "Share reports with co-founders, mentors, or accelerators to prove you're investor-ready.", accent: "text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20" },
@@ -2444,7 +2660,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* â”€â”€ Data Insights â€” 4 columns â”€â”€ */}
+      {/* ── Data Insights — 4 columns ── */}
       <section id="insights" className="py-10 sm:py-14 bg-slate-50 dark:bg-zinc-900/50 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-6 sm:mb-8">
@@ -2453,7 +2669,7 @@ export default function LandingPage() {
             <p className="text-xs sm:text-base text-slate-500 dark:text-zinc-400 max-w-lg mx-auto">Beautiful analytics that help you understand your pitch performance</p>
           </div>
 
-          {/* Readiness metrics â€” 4 columns on desktop, 2 on mobile */}
+          {/* Readiness metrics — 4 columns on desktop, 2 on mobile */}
           <div className="max-w-4xl mx-auto">
             <h3 className="text-xs sm:text-sm font-bold mb-3 sm:mb-4">Startup Readiness Progress</h3>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -2479,7 +2695,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* â”€â”€ Waitlist â”€â”€ */}
+      {/* ── Waitlist ── */}
       <section className="py-10 sm:py-14 bg-slate-50 dark:bg-zinc-900/50 transition-colors">
         <div className="max-w-xl mx-auto px-4 sm:px-6 text-center">
           <span className="text-sky-600 dark:text-sky-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Limited Early Access</span>
@@ -2488,7 +2704,7 @@ export default function LandingPage() {
 
           {waitlistStatus === 'success' ? (
             <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-3 py-2 rounded-xl flex items-center justify-center gap-2">
-              <ShieldCheck size={16} /> <span className="text-xs font-bold">You're on the list! ðŸŽ‰</span>
+              <ShieldCheck size={16} /> <span className="text-xs font-bold">You're on the list! 🎉</span>
             </div>
           ) : (
             <form onSubmit={handleWaitlistSubmit} className="flex gap-2 max-w-sm mx-auto bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-1 focus-within:ring-2 focus-within:ring-sky-500/20 transition-all">
@@ -2502,14 +2718,14 @@ export default function LandingPage() {
 
           <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-4 text-[10px] sm:text-xs text-slate-400 dark:text-zinc-500">
             <span>2,847 founders on the waitlist</span>
-            <span>â€¢</span>
+            <span>•</span>
             <span>Limited spots available</span>
           </div>
           <p className="text-[10px] sm:text-xs text-slate-400 dark:text-zinc-500 mt-1.5">Early access closes in 7 days. Join now to secure your spot.</p>
         </div>
       </section>
 
-      {/* â”€â”€ FAQ â€” 2 columns on desktop â”€â”€ */}
+      {/* ── FAQ — 2 columns on desktop ── */}
       <section id="faq" className="py-10 sm:py-14">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-6 sm:mb-8">
@@ -2524,7 +2740,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* â”€â”€ CTA â”€â”€ */}
+      {/* ── CTA ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
         <div className="bg-gradient-to-br from-indigo-600 to-sky-500 rounded-2xl sm:rounded-3xl p-6 sm:p-10 text-center text-white relative overflow-hidden shadow-2xl shadow-sky-500/20">
           <div className="relative z-10 max-w-2xl mx-auto">
@@ -2539,7 +2755,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* â”€â”€ Footer â”€â”€ */}
+      {/* ── Footer ── */}
       <footer className="bg-slate-50 dark:bg-zinc-900/50 py-12 sm:py-20 border-t border-slate-200 dark:border-zinc-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-2 md:grid-cols-5 gap-8 sm:gap-10">
           {/* Brand + socials */}
@@ -2614,7 +2830,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-8 sm:mt-16 pt-6 sm:pt-8 border-t border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] sm:text-xs text-slate-400 dark:text-zinc-500">
-          <p>Â© {new Date().getFullYear()} PitchNest AI. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} PitchNest AI. All rights reserved.</p>
           <p>Built with passion for the startup ecosystem.</p>
         </div>
       </footer>
@@ -2622,7 +2838,7 @@ export default function LandingPage() {
   );
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ FAQ sub-component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────────────── FAQ sub-component ───────────────── */
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
@@ -2656,6 +2872,7 @@ import { useMediaRecorder } from '../hooks/useMediaRecorder';
 import { useScreenCapture } from '../hooks/useScreenCapture';
 import { useSocketContext } from '../contexts/SocketContext'; 
 import { useAuth } from '../contexts/AuthContext';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 const TTS_LANG = 'en-US';
 const TTS_MAX_CHARS = 420;
@@ -2677,7 +2894,7 @@ function trimToSentences(text: string, maxSentences: number) {
 function limitSpokenText(text: string) {
   const t = trimToSentences(text, TTS_MAX_SENTENCES);
   if (t.length <= TTS_MAX_CHARS) return t;
-  return t.slice(0, TTS_MAX_CHARS).replace(/\s+\S*$/, '').trimEnd() + 'â€¦';
+  return t.slice(0, TTS_MAX_CHARS).replace(/\s+\S*$/, '').trimEnd() + '…';
 }
 
 const VoiceWaveform = ({ isActive }: { isActive?: boolean }) => (
@@ -2693,24 +2910,54 @@ const VoiceWaveform = ({ isActive }: { isActive?: boolean }) => (
   </div>
 );
 
+const PANELISTS_AVATARS: Record<string, string> = {
+  marcus: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=300&h=300",
+  sarah: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300&h=300",
+  chen: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300&h=300",
+  elena: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=300&h=300",
+  david: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=300&h=300",
+  james: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=300&h=300",
+  riley: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300&h=300",
+  taylor: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300&h=300",
+};
+
+function getPanelistAvatar(name: string): string {
+  const normalized = name.toLowerCase().trim();
+  for (const [key, url] of Object.entries(PANELISTS_AVATARS)) {
+    if (normalized.includes(key)) {
+      return url;
+    }
+  }
+  return `https://i.pravatar.cc/300?u=${normalized}`;
+}
+
 const AIPanelist = ({ name, role, isActive }: { name: string, role: string, isActive?: boolean }) => (
   <div className={cn(
-    "p-3 bg-white dark:bg-zinc-900/80 border rounded-2xl shadow-sm transition-all duration-300 relative overflow-hidden flex items-center justify-between",
-    isActive ? "border-sky-500 ring-1 ring-sky-500/20 shadow-md shadow-sky-100 dark:shadow-sky-900/10 scale-[1.02] bg-sky-50/50 dark:bg-sky-900/10" : "border-slate-100 dark:border-zinc-800"
+    "w-[190px] lg:w-full shrink-0 relative overflow-hidden bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md rounded-[20px] transition-all duration-500 group flex flex-col border",
+    isActive ? "border-sky-500 shadow-[0_0_20px_rgba(14,165,233,0.15)] bg-sky-50/50 dark:bg-zinc-800" : "border-slate-200 dark:border-white/5"
   )}>
-    <div className="flex items-center gap-3 relative z-10">
-      <div className="relative">
-        {isActive && <span className="absolute inset-0 rounded-full bg-sky-500 opacity-40 animate-ping" />}
-        <div className={cn("relative w-10 h-10 rounded-full overflow-hidden border-2 transition-colors z-10 object-cover", isActive ? "border-sky-500" : "border-transparent")}>
-          <img src={`https://i.pravatar.cc/150?u=${name}`} alt={name} className="w-full h-full object-cover" />
-        </div>
-      </div>
-      <div>
-        <p className={cn("text-xs font-bold", isActive ? "text-sky-600 dark:text-sky-400" : "text-slate-900 dark:text-zinc-100")}>{name}</p>
-        <span className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">{role}</span>
+    {isActive && <div className="absolute inset-0 bg-gradient-to-b from-sky-500/10 to-transparent pointer-events-none" />}
+    
+    <div className="relative aspect-[4/3] w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+       {/* Realistic Avatar for Dashboard look */}
+      <img src={getPanelistAvatar(name)} alt={name} className={cn("w-full h-full object-cover transition-transform duration-700", isActive ? "scale-110" : "scale-100")} />
+      
+      {/* Active Recording Icon top right */}
+      <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/60 dark:bg-black/40 backdrop-blur-md px-2 py-1 rounded-md border border-slate-200/60 dark:border-white/10">
+        <Video size={10} className={isActive ? "text-sky-400" : "text-slate-500 dark:text-white/40"} />
+        {isActive && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
       </div>
     </div>
-    <VoiceWaveform isActive={isActive} />
+
+    <div className="p-3 flex items-center justify-between border-t border-slate-200/65 dark:border-white/5 relative bg-slate-50 dark:bg-slate-900">
+      <div className="relative z-10">
+        <p className="text-[11px] font-bold text-slate-800 dark:text-white uppercase tracking-wider">{name}</p>
+        <span className="text-[9px] font-bold text-sky-600 dark:text-sky-400/80 uppercase tracking-widest">{role}</span>
+      </div>
+      <div className="opacity-70 group-hover:opacity-100 transition-opacity">
+        <VoiceWaveform isActive={isActive} />
+      </div>
+    </div>
   </div>
 );
 
@@ -2776,14 +3023,13 @@ export default function LivePitchRoom() {
   const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pitchStartTimeRef = useRef<number>(0);
-  const recognitionRef = useRef<any>(null);
-  const recognitionActiveRef = useRef<boolean>(false);
 
   const ttsStreamBufferRef = useRef<string>('');
   const ttsStreamFlushTimerRef = useRef<number | null>(null);
   const ttsDidStreamSpeakRef = useRef(false);
   const isAiStreamingRef = useRef(false);
   const preferredVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const uploadPromiseRef = useRef<Promise<any> | null>(null);
 
   useEffect(() => {
     if (!('speechSynthesis' in window)) return;
@@ -2814,74 +3060,6 @@ export default function LivePitchRoom() {
     }
   }, [messages]);
 
-  // Web Speech API SpeechRecognition to transcribe spoken text for visual logging and evaluation
-  useEffect(() => {
-    if (!isPitching) {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) {}
-        recognitionRef.current = null;
-      }
-      recognitionActiveRef.current = false;
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.warn("SpeechRecognition not supported in this browser");
-      return;
-    }
-
-    const rec = new SpeechRecognition();
-    rec.continuous = true;
-    rec.interimResults = false;
-    rec.lang = 'en-US';
-
-    rec.onstart = () => {
-      console.log("Speech recognition started");
-      recognitionActiveRef.current = true;
-    };
-
-    rec.onresult = (event: any) => {
-      const result = event.results[event.results.length - 1];
-      if (result.isFinal) {
-        const transcript = result[0].transcript.trim();
-        if (transcript) {
-          setMessages(prev => [
-            ...prev,
-            {
-              id: `voice-${Date.now()}`,
-              text: transcript,
-              type: 'user',
-              speaker: userData.name,
-              inputMethod: 'voice'
-            }
-          ]);
-        }
-      }
-    };
-
-    rec.onerror = (event: any) => {
-      console.error("Speech Recognition Error:", event.error);
-    };
-
-    rec.onend = () => {
-      console.log("Speech recognition ended");
-      if (isPitching && !isMicMuted && recognitionActiveRef.current) {
-        try { rec.start(); } catch (e) {}
-      }
-    };
-
-    recognitionRef.current = rec;
-
-    if (!isMicMuted) {
-      try { rec.start(); } catch (e) {}
-    }
-
-    return () => {
-      recognitionActiveRef.current = false;
-      try { rec.stop(); } catch (e) {}
-    };
-  }, [isPitching, isMicMuted, userData.name]);
 
   useEffect(() => {
     if (!isPitching || isEvaluatingPitch) return;
@@ -2913,16 +3091,8 @@ export default function LivePitchRoom() {
   }, []);
 
   const speakShort = useCallback((rawText: string) => {
-    if (!('speechSynthesis' in window)) return;
-    const text = limitSpokenText(rawText);
-    if (!text) return;
-    try { if (window.speechSynthesis.speaking) window.speechSynthesis.cancel(); } catch {}
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = TTS_LANG;
-    u.rate = 1.02;
-    u.pitch = 1;
-    if (preferredVoiceRef.current) u.voice = preferredVoiceRef.current;
-    try { window.speechSynthesis.speak(u); } catch {}
+    // Disabled to prevent double-voice bug and clash with native Gemini audio
+    return;
   }, []);
 
   const flushTtsStreamBuffer = useCallback((): boolean => {
@@ -2984,7 +3154,7 @@ export default function LivePitchRoom() {
         });
         mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data); };
         
-        // ðŸ”¥ FIX 1: Smaller chunk size (250ms instead of 1000ms) for upload stability
+        // 🔥 FIX 1: Smaller chunk size (250ms instead of 1000ms) for upload stability
         mediaRecorder.start(250); 
         mediaRecorderRef.current = mediaRecorder;
       } catch (e) {}
@@ -3010,7 +3180,7 @@ export default function LivePitchRoom() {
       const base64Data = btoa(binary);
 
       if (socket.readyState === WebSocket.OPEN) {
-        // ðŸ”¥ FIX 2: Buffer overflow guard to stop Gemini from freezing mid-pitch
+        // 🔥 FIX 2: Buffer overflow guard to stop Gemini from freezing mid-pitch
         if (socket.bufferedAmount > 1000000) {
           console.warn("WebSocket buffer full, dropping chunk");
           return;
@@ -3147,7 +3317,17 @@ export default function LivePitchRoom() {
         if (data.type === "report") {
           if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
           if (statusIntervalRef.current) clearInterval(statusIntervalRef.current);
-          navigate(`/report${data.sessionId ? `?session=${data.sessionId}` : ''}`); 
+          
+          const finalizeNavigation = () => {
+            navigate(`/report${data.sessionId ? `?session=${data.sessionId}` : ''}`); 
+          };
+
+          if (uploadPromiseRef.current) {
+            setLoadingStatus("Finalizing video upload...");
+            uploadPromiseRef.current.finally(finalizeNavigation);
+          } else {
+            finalizeNavigation();
+          }
         }
       } catch (err) {}
     };
@@ -3222,31 +3402,15 @@ export default function LivePitchRoom() {
     fallbackTimerRef.current = setTimeout(() => {
       if (statusIntervalRef.current) clearInterval(statusIntervalRef.current);
       navigate('/report');
-    }, 35000);
+    }, 300000); // 5 minute fallback in case of slow video upload
 
     const stopAndEvaluate = async () => {
       if (stream) { stream.getTracks().forEach(track => track.stop()); stopStream(); }
       if (screenStream) { screenStream.getTracks().forEach(track => track.stop()); }
       if (isCapturing) stopCapture();
 
-      setLoadingStatus("Uploading video to secure cloud vault...");
-      if (chunksRef.current && chunksRef.current.length > 0) {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        const formData = new FormData();
-        formData.append('video', blob, `pitch_${Date.now()}.webm`);
-        try {
-          const res = await authFetch('/api/upload-video', { method: 'POST', body: formData });
-          const data = await res.json();
-          if (data.videoUrl && socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: "set_video_url", url: data.videoUrl }));
-          }
-        } catch (err) {}
-      }
-      
-      // ðŸ”¥ FIX 3: Clear chunks from memory to prevent browser memory leak
-      chunksRef.current = [];
-      
-      setLoadingStatus("Panel is grading your pitch...");
+      // 1. Immediately send end_session so AI can start grading without waiting for large video upload
+      setLoadingStatus("Panel is grading your pitch while video uploads...");
       if (socket && socket.readyState === WebSocket.OPEN) {
         const finalDuration = Math.floor((Date.now() - pitchStartTimeRef.current) / 1000);
         socket.send(JSON.stringify({ 
@@ -3255,6 +3419,29 @@ export default function LivePitchRoom() {
           transcript: messages
         }));
       }
+
+      // 2. Upload video in parallel
+      if (chunksRef.current && chunksRef.current.length > 0) {
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        const formData = new FormData();
+        formData.append('video', blob, `pitch_${Date.now()}.webm`);
+        
+        uploadPromiseRef.current = new Promise<void>(async (resolve) => {
+          try {
+            const res = await authFetch('/api/upload-video', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.videoUrl && socket && socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: "set_video_url", url: data.videoUrl }));
+            }
+          } catch (err) {
+            console.error("Video upload failed:", err);
+          } finally {
+            resolve();
+          }
+        });
+      }
+      
+      chunksRef.current = [];
     };
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -3287,7 +3474,7 @@ export default function LivePitchRoom() {
   };
 
   return (
-    <div className="h-screen max-h-screen bg-slate-900 dark:bg-zinc-950 text-white font-sans flex flex-col relative overflow-hidden transition-colors">
+    <div className="h-screen max-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-white font-sans flex flex-col relative overflow-hidden transition-colors">
       
       <AnimatePresence>
         {roomState !== 'live' && (
@@ -3318,13 +3505,15 @@ export default function LivePitchRoom() {
         )}
       </AnimatePresence>
 
-      <header className="px-6 py-3 flex justify-between items-center border-b border-white/5 bg-slate-900/50 dark:bg-zinc-950/50 backdrop-blur-md shrink-0 z-20">
+      <header className="px-6 py-3 flex justify-between items-center border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-zinc-950/50 backdrop-blur-md shrink-0 z-20 transition-colors">
         <div className="flex items-center gap-4">
           <div className={cn("w-8 h-8 flex items-center justify-center overflow-hidden rounded-lg", logoError && "bg-sky-500 text-white")}>
             {!logoError ? <img src="/PitchNest Logo.png" alt="Logo" className="w-full h-full object-contain" onError={() => setLogoError(true)} /> : <Rocket size={20} fill="currentColor" />}
           </div>
-          <span className="text-lg font-bold tracking-tight">PitchNest</span>
-          <div className="h-6 w-px bg-white/10 mx-2" />
+          <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">PitchNest</span>
+          <div className="h-6 w-px bg-slate-200 dark:bg-white/10 mx-2" />
+          <ThemeToggle />
+          <div className="h-6 w-px bg-slate-200 dark:bg-white/10 mx-2" />
           <div className={cn("flex items-center gap-2 px-3 py-1 rounded-full border transition-all", isConnected ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border-rose-500/20")}>
             <div className={cn("w-2 h-2 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
             <span className="text-[10px] font-bold uppercase tracking-widest">{isConnected ? "Brain Connected" : "Offline"}</span>
@@ -3333,107 +3522,127 @@ export default function LivePitchRoom() {
 
         <div className={cn(
           "flex items-center gap-2 px-4 py-1.5 rounded-full font-mono text-sm font-bold border transition-colors",
-          timeLeft < 180 ? "bg-rose-500/20 text-rose-500 border-rose-500/50 animate-pulse" : "bg-slate-800 text-white border-slate-700"
+          timeLeft < 180 ? "bg-rose-500/20 text-rose-500 border-rose-500/50 animate-pulse" : "bg-slate-100 dark:bg-zinc-900 text-slate-800 dark:text-white border-slate-200 dark:border-zinc-800"
         )}>
           <Timer size={16} />
           {formatTime(timeLeft)}
         </div>
 
-        <div className="flex items-center gap-4 pl-6 border-l border-white/10">
+        <div className="flex items-center gap-4 pl-6 border-l border-slate-200 dark:border-white/10">
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-bold">{userData.name}</p>
-              <p className="text-[10px] text-white/40 font-medium">Founder</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white">{userData.name}</p>
+              <p className="text-[10px] text-slate-400 dark:text-white/40 font-medium">Founder</p>
             </div>
             <div className="relative">
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.name}`} alt="Avatar" className="w-10 h-10 rounded-full border-2 border-white/10 relative z-10 bg-sky-100" />
+              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.name}`} alt="Avatar" className="w-10 h-10 rounded-full border-2 border-slate-200 dark:border-white/10 relative z-10 bg-sky-100" />
             </div>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row p-4 gap-4 min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row p-3.5 gap-4 min-h-0 overflow-y-auto lg:overflow-hidden bg-slate-100/50 dark:bg-zinc-950 transition-colors">
         
-        {/* Main Left Column */}
-        <div className="flex-1 flex flex-col gap-4 min-h-0">
+        {/* LEFT COLUMN: AI Panelists */}
+        <div className="w-full lg:w-72 shrink-0 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl rounded-[24px] p-4 flex flex-col border border-slate-200 dark:border-white/5 shadow-xl dark:shadow-2xl min-h-0 transition-colors">
+          <div className="mb-4 shrink-0">
+            <h3 className="text-xs font-bold text-slate-700 dark:text-white flex items-center gap-2 uppercase tracking-widest">
+              {pitchConfig.mode === 'solo' ? 'Solo Practice' : 'AI Investor Panel'}
+              {isSpeaking && <Sparkles className="text-sky-500 animate-pulse" size={14} />}
+            </h3>
+            <p className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase mt-1 tracking-wider">
+              {pitchConfig.mode === 'solo' ? "No interruptions" : pitchConfig.investorArchetype}
+            </p>
+          </div>
           
-          {/* Top Row: Main Screen + AI Panel */}
-          <div className="flex-1 flex gap-4 min-h-0">
-            {/* Main Viewing Area */}
-            <div className="flex-1 relative border border-white/5 shadow-2xl group rounded-[24px] min-h-0 bg-white">
-              {mainView === 'slide' ? (
-                <div className="w-full h-full relative flex items-center justify-center rounded-[24px] overflow-hidden">
-                  {isCapturing ? (
-                    <video ref={screenRef} autoPlay muted playsInline className="w-full h-full object-contain bg-black/40" />
-                  ) : pitchConfig.selectedDeck ? (
-                    <iframe src={getDeckUrl(pitchConfig.selectedDeck.file_url)} className="w-full h-full border-none" title="Pitch Deck" />
-                  ) : (
-                    <div className="text-slate-400 text-center bg-slate-900 w-full h-full flex flex-col items-center justify-center"><MonitorOff size={64} className="mx-auto mb-2 opacity-50" /><p className="text-xs font-bold uppercase tracking-widest opacity-50">No deck selected</p></div>
-                  )}
-                </div>
-              ) : (
-                <div className="w-full h-full relative flex items-center justify-center bg-slate-900 rounded-[24px] overflow-hidden">
-                  {stream ? <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" /> : <VideoOff size={48} className="text-white/20" />}
-                  {isPitching && <div className="absolute top-4 right-4 bg-rose-500 px-3 py-1 rounded-full text-[9px] font-bold animate-pulse shadow-lg z-10">VISION ON</div>}
-                </div>
-              )}
-
-              <button 
-                onClick={() => setMainView(v => v === 'slide' ? 'camera' : 'slide')}
-                className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 rounded-xl text-white transition-all z-20 flex items-center gap-2 shadow-lg"
-              >
-                <ArrowRightLeft size={14} /> <span className="text-[10px] font-bold uppercase tracking-widest">Swap View</span>
-              </button>
-            </div>
-
-            {/* AI Panel */}
-            <div className="w-64 shrink-0 bg-white dark:bg-zinc-900 rounded-[24px] p-4 shadow-xl flex flex-col border border-slate-100 dark:border-zinc-800 min-h-0">
-              <div className="mb-3 shrink-0">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-zinc-100 flex items-center gap-2">
-                  {pitchConfig.mode === 'solo' ? 'Solo Practice' : 'AI Investor Panel'}
-                  {isSpeaking && <Sparkles className="text-sky-500 animate-pulse" size={14} />}
-                </h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">
-                  {pitchConfig.mode === 'solo' ? "No interruptions" : pitchConfig.investorArchetype}
-                </p>
+          <div className="flex flex-row lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto flex-1 pr-2 custom-scrollbar pb-2 lg:pb-0">
+            {pitchConfig.mode !== 'solo' && visiblePersonas.map((persona, idx) => (
+              <AIPanelist 
+                key={idx}
+                name={persona.name} 
+                role={persona.role} 
+                isActive={isSpeaking && activeSpeakerName.toLowerCase().includes(persona.name.toLowerCase())} 
+              />
+            ))}
+            
+            {pitchConfig.mode === 'solo' && (
+              <div className="p-4 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl text-center text-slate-500 text-xs mt-2">
+                AI Interruption Disabled.<br/> Record your pitch uninterrupted.
               </div>
-              
-              <div className="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
-                {pitchConfig.mode !== 'solo' && visiblePersonas.map((persona, idx) => (
-                  <AIPanelist 
-                    key={idx}
-                    name={persona.name} 
-                    role={persona.role} 
-                    isActive={isSpeaking && activeSpeakerName.toLowerCase().includes(persona.name.toLowerCase())} 
-                  />
-                ))}
-                
-                {pitchConfig.mode === 'solo' && (
-                  <div className="p-3 border border-dashed border-slate-200 dark:border-zinc-800 rounded-xl text-center text-slate-500 text-xs mt-2">
-                    AI Interruption Disabled.<br/> Record your pitch uninterrupted.
-                  </div>
+            )}
+          </div>
+        </div>
+
+        {/* CENTER COLUMN: Main Screen, Controls, Chat */}
+        <div className="flex-1 flex flex-col gap-3.5 min-h-0">
+          
+          {/* Main Viewing Area */}
+          <div className="flex-1 min-h-[320px] lg:min-h-0 relative border border-slate-200 dark:border-white/10 shadow-xl dark:shadow-2xl group rounded-[24px] min-h-0 bg-white dark:bg-zinc-900/80 overflow-hidden backdrop-blur-lg transition-colors">
+            {mainView === 'slide' ? (
+              <div className="w-full h-full relative flex items-center justify-center rounded-[24px] overflow-hidden">
+                {isCapturing ? (
+                  <video ref={screenRef} autoPlay muted playsInline className="w-full h-full object-contain bg-black/40" />
+                ) : pitchConfig.selectedDeck ? (
+                  <iframe src={getDeckUrl(pitchConfig.selectedDeck.file_url)} className="w-full h-full border-none" title="Pitch Deck" />
+                ) : (
+                  <div className="text-slate-400 dark:text-slate-500 text-center bg-slate-100 dark:bg-slate-900 w-full h-full flex flex-col items-center justify-center"><MonitorOff size={64} className="mx-auto mb-2 opacity-50" /><p className="text-xs font-bold uppercase tracking-widest opacity-50">No deck selected</p></div>
                 )}
               </div>
+            ) : (
+              <div className="w-full h-full relative flex items-center justify-center rounded-[24px] overflow-hidden">
+                {stream ? <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" /> : <VideoOff size={64} className="text-slate-300 dark:text-white/20" />}
+                {isPitching && <div className="absolute top-4 right-4 bg-rose-500 px-3 py-1 rounded-full text-[9px] font-bold animate-pulse shadow-lg z-10 uppercase tracking-widest text-white">Vision On</div>}
+              </div>
+            )}
+
+            <button 
+              onClick={() => setMainView(v => v === 'slide' ? 'camera' : 'slide')}
+              className="absolute top-4 left-4 px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 rounded-xl text-white transition-all z-20 flex items-center gap-2 shadow-lg cursor-pointer"
+            >
+              <ArrowRightLeft size={14} /> <span className="text-[10px] font-bold uppercase tracking-widest">Swap View</span>
+            </button>
+            
+            {/* Control Bar Overlay (Bottom Center) */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/95 dark:bg-zinc-900/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-2 rounded-2xl shadow-xl dark:shadow-2xl z-20 transition-colors">
+              <button onClick={toggleCamera} className={cn("w-12 h-12 rounded-xl transition-all flex items-center justify-center cursor-pointer", stream ? "bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-white hover:bg-slate-200 dark:hover:bg-zinc-700" : "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30")}>
+                {stream ? <Video size={20} /> : <VideoOff size={20} />}
+              </button>
+              <button onClick={toggleMic} className={cn("w-12 h-12 rounded-xl transition-all flex items-center justify-center cursor-pointer", !isMicMuted ? "bg-sky-500 text-white hover:bg-sky-600 shadow-lg shadow-sky-500/20" : "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30")}>
+                {!isMicMuted ? <Mic size={20} /> : <MicOff size={20} />}
+              </button>
+              {canScreenShare && (
+                <button onClick={toggleScreenShare} className={cn("w-12 h-12 rounded-xl transition-all flex items-center justify-center cursor-pointer", isCapturing ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600" : "bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-white hover:bg-slate-200 dark:hover:bg-zinc-700")}>
+                  {isCapturing ? <Monitor size={20} /> : <MonitorOff size={20} />}
+                </button>
+              )}
+              <div className="w-px h-8 bg-slate-200 dark:bg-white/10 mx-2" />
+              <button 
+                onClick={handleEndSession}
+                disabled={!isConnected && !isPitching}
+                className="px-6 h-12 bg-rose-500 text-white text-sm font-bold rounded-xl hover:bg-rose-600 transition-all disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:opacity-50 shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <VolumeX size={18} /> End Pitch
+              </button>
             </div>
           </div>
 
           {/* Transcript / Chat Area */}
-          <div className="h-48 shrink-0 bg-slate-800/50 backdrop-blur-md rounded-[24px] p-4 flex flex-col border border-white/5">
-            <div className="flex items-center gap-2 text-white/50 text-[10px] font-bold uppercase tracking-widest mb-2">
-              <MessageSquare size={14} /> Live Transcript
-              {isSpeaking && <span className="text-sky-400 animate-pulse ml-auto">AI is speaking...</span>}
+          <div className="h-40 lg:h-48 shrink-0 bg-white/70 dark:bg-zinc-900/60 backdrop-blur-xl rounded-[24px] p-4 flex flex-col border border-slate-200 dark:border-white/5 shadow-xl dark:shadow-2xl transition-colors">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-white/50 text-[10px] font-bold uppercase tracking-widest mb-2 shrink-0">
+              <MessageSquare size={14} /> Chatbox & Transcript
+              {isSpeaking && <span className="text-sky-500 dark:text-sky-400 animate-pulse ml-auto font-medium">AI is responding...</span>}
             </div>
             
             <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar mb-3">
-              {messages.length === 0 ? <p className="text-white/30 text-xs text-center mt-4 font-medium">Panel is ready. Start your pitch.</p> : 
+              {messages.length === 0 ? <p className="text-slate-400 dark:text-white/30 text-xs text-center mt-4 font-medium tracking-wide">AI Panel is ready. Start your pitch.</p> : 
                 messages.map((m) => (
                   <div key={m.id} className={cn("flex flex-col max-w-[80%]", m.type === 'user' ? "ml-auto items-end" : "mr-auto items-start")}>
-                    <span className="text-[9px] font-bold uppercase text-white/40 mb-1 px-1 tracking-wider">
+                    <span className="text-[9px] font-bold uppercase text-slate-450 dark:text-white/40 mb-1 px-1 tracking-widest">
                       {m.speaker || (m.type === 'user' ? userData.name : "Panelist")}
                     </span>
                     <div className={cn(
-                      "p-3 text-[13px] leading-relaxed",
-                      m.type === 'user' ? "bg-sky-500 text-white rounded-2xl rounded-tr-sm shadow-md" : "bg-slate-700 text-slate-100 rounded-2xl rounded-tl-sm border border-slate-600 shadow-sm"
+                      "p-3.5 text-sm leading-relaxed",
+                      m.type === 'user' ? "bg-sky-500 text-white rounded-2xl rounded-tr-sm shadow-md" : "bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-sm border border-slate-200 dark:border-zinc-700 shadow-sm"
                     )}>
                       {m.text}
                     </div>
@@ -3442,67 +3651,82 @@ export default function LivePitchRoom() {
               }
             </div>
 
-            <form onSubmit={handleSendChat} className="flex items-center gap-2 shrink-0 mt-auto bg-slate-900 border border-slate-700 rounded-xl p-1.5 shadow-inner">
-              <button 
-                type="button" 
-                onClick={toggleMic} 
-                className={cn("p-2 rounded-lg transition-colors flex items-center justify-center", !isMicMuted ? "text-sky-400 hover:bg-slate-800" : "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30")}
-                title={!isMicMuted ? "Mute Microphone" : "Unmute Microphone"}
-              >
-                {!isMicMuted ? <Mic size={18} /> : <MicOff size={18} />}
-              </button>
+            <form onSubmit={handleSendChat} className="flex items-center gap-3 shrink-0 mt-auto bg-slate-100/50 dark:bg-zinc-950/50 border border-slate-200 dark:border-white/10 rounded-xl p-1.5 shadow-inner">
               <input 
                 type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
-                placeholder="Type a message or use your microphone..."
-                className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-white placeholder:text-slate-500 px-2 outline-none"
+                placeholder="Type a message to the panel..."
+                className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 px-3 outline-none"
               />
-              <button type="submit" disabled={!isConnected} className="p-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 shadow-md">
-                <Send size={16} />
+              <button type="submit" disabled={!isConnected} className="px-4 py-2 bg-sky-500 text-white font-bold text-slate-100 hover:text-white text-xs uppercase tracking-wider rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 shadow-md cursor-pointer">
+                Send
               </button>
             </form>
           </div>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="w-80 shrink-0 flex flex-col gap-4 min-h-0">
+        {/* RIGHT COLUMN: Deck, Vitals, Analytics */}
+        <div className="w-full lg:w-96 shrink-0 flex flex-col gap-3.5 min-h-0 lg:overflow-y-auto lg:custom-scrollbar pr-1">
           
-          <div className="aspect-video shrink-0 relative shadow-2xl border border-white/5 rounded-[24px] overflow-hidden bg-slate-800">
+          {/* Deck Preview Box */}
+          <div className="h-32 lg:h-36 shrink-0 relative shadow-xl dark:shadow-2xl border-4 border-slate-250 dark:border-white/10 rounded-[24px] overflow-hidden bg-white dark:bg-zinc-900 cursor-pointer group transition-transform hover:scale-[1.02]" onClick={() => setMainView(v => v === 'slide' ? 'camera' : 'slide')}>
             {mainView === 'camera' ? (
-              <div className="w-full h-full relative flex items-center justify-center bg-white overflow-hidden pointer-events-none">
+              <div className="w-full h-full relative flex items-center justify-center bg-slate-100 dark:bg-zinc-900 pointer-events-none">
                 {isCapturing ? <video ref={screenRef} autoPlay muted playsInline className="w-full h-full object-contain" /> : 
-                 pitchConfig.selectedDeck ? <iframe src={getDeckUrl(pitchConfig.selectedDeck.file_url)} className="w-full h-full border-none" title="Pitch Deck" /> :
-                 <div className="text-white/20 text-center"><MonitorOff size={32} className="mx-auto mb-1" /><p className="text-[9px] font-bold uppercase tracking-widest">No Screen</p></div>}
+                 pitchConfig.selectedDeck ? <iframe src={getDeckUrl(pitchConfig.selectedDeck.file_url)} className="w-full h-full border-none opacity-90 scale-105" title="Pitch Deck" /> :
+                 <div className="text-slate-400 dark:text-white/20 text-center"><MonitorOff size={32} className="mx-auto mb-2" /><p className="text-[10px] font-bold uppercase tracking-widest">No Deck</p></div>}
               </div>
             ) : (
-              <div className="w-full h-full relative flex items-center justify-center rounded-[24px] overflow-hidden">
-                {stream ? <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" /> : <VideoOff size={32} className="text-white/20" />}
+              <div className="w-full h-full relative flex items-center justify-center pointer-events-none">
+                {stream ? <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" /> : <VideoOff size={32} className="text-slate-300 dark:text-white/20" />}
               </div>
             )}
+            
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+               <ArrowRightLeft className="text-white drop-shadow-xl" size={32} />
+               <span className="absolute bottom-4 text-[10px] font-bold uppercase tracking-widest text-white shadow-black drop-shadow-lg">Switch to Main Screen</span>
+            </div>
           </div>
 
-          <div className="flex gap-2 shrink-0">
-            <button onClick={toggleCamera} className={cn("flex-1 py-2.5 rounded-xl border transition-all flex items-center justify-center", stream ? "bg-slate-800 border-slate-700 text-white hover:bg-slate-700" : "bg-rose-500/20 border-rose-500/50 text-rose-500 hover:bg-rose-500/30")}>
-              {stream ? <Video size={16} /> : <VideoOff size={16} />}
-            </button>
-            <button onClick={toggleMic} className={cn("flex-1 py-2.5 rounded-xl border transition-all flex items-center justify-center", !isMicMuted ? "bg-slate-800 border-slate-700 text-white hover:bg-slate-700" : "bg-rose-500/20 border-rose-500/50 text-rose-500 hover:bg-rose-500/30")}>
-              {!isMicMuted ? <Mic size={16} /> : <MicOff size={16} />}
-            </button>
-            {canScreenShare && (
-              <button onClick={toggleScreenShare} className={cn("flex-1 py-2.5 rounded-xl border transition-all flex items-center justify-center", isCapturing ? "bg-sky-500 text-white border-sky-500 hover:bg-sky-600" : "bg-slate-800 border-slate-700 text-white hover:bg-slate-700")}>
-                {isCapturing ? <Monitor size={16} /> : <MonitorOff size={16} />}
-              </button>
-            )}
+          {/* Live Session Monitor / Boardroom Vitals */}
+          <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl rounded-[24px] p-4 border border-slate-200 dark:border-white/5 shadow-xl flex flex-col shrink-0 transition-colors">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-white/50 text-[10px] font-bold uppercase tracking-widest shrink-0 mb-2.5">
+              <Activity size={14} /> Live Session Monitor
+            </div>
+            
+            <h4 className="text-[11px] font-bold text-slate-700 dark:text-white/80 uppercase tracking-widest mb-3">Boardroom Vitals</h4>
+            
+            <div className="space-y-2.5">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Brain Link</span>
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider", isConnected ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400")}>
+                  {isConnected ? "Connected" : "Offline"}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Audio Pipeline</span>
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider", stream && !isMicMuted ? "text-sky-600 dark:text-sky-400" : "text-rose-500 dark:text-rose-400")}>
+                  {stream && !isMicMuted ? "Active" : "Muted"}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Vision Input</span>
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider", stream ? "text-sky-600 dark:text-sky-400" : "text-slate-400 dark:text-slate-500")}>
+                  {stream ? "Active" : "Disabled"}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Interactive Sharing</span>
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider", isCapturing ? "text-amber-500 dark:text-amber-400" : "text-slate-400 dark:text-slate-500")}>
+                  {isCapturing ? "Casting" : "Inactive"}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <button 
-            onClick={handleEndSession}
-            disabled={!isConnected && !isPitching}
-            className="w-full shrink-0 py-3 bg-rose-500 text-white text-sm font-bold rounded-xl hover:bg-rose-600 transition-all disabled:bg-slate-700 disabled:opacity-50 shadow-lg flex items-center justify-center gap-2"
-          >
-            <VolumeX size={16} /> End Pitch Session
-          </button>
-
-          {/* Live Session Monitor Panel */}
+          {/* Data Chart Area */}
           {(() => {
             const userMsgCount = messages.filter(m => m.type === 'user').length;
             const aiMsgCount = messages.filter(m => m.type === 'ai').length;
@@ -3510,77 +3734,24 @@ export default function LivePitchRoom() {
             const dialogueBalance = totalMsgCount > 0 ? Math.round((userMsgCount / totalMsgCount) * 100) : 50;
 
             return (
-              <div className="flex-1 bg-slate-800/40 rounded-[24px] p-5 border border-white/5 flex flex-col gap-5 min-h-0 overflow-y-auto custom-scrollbar">
-                <div className="flex items-center gap-2 text-white/50 text-[10px] font-bold uppercase tracking-widest shrink-0">
-                  <Activity size={14} /> Live Session Monitor
-                </div>
+              <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl rounded-[24px] p-4 border border-slate-200 dark:border-white/5 flex flex-col justify-between shadow-xl min-h-[120px] transition-colors">
+                <h4 className="text-[11px] font-bold text-slate-700 dark:text-white/80 uppercase tracking-widest mb-3">Data Chart</h4>
                 
-                {/* Boardroom Vitals */}
-                <div className="space-y-3 shrink-0">
-                  <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Boardroom Vitals</h4>
-                  
-                  <div className="bg-slate-900/50 p-3.5 rounded-2xl border border-white/5 space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 font-medium">Brain Link</span>
-                      <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider", isConnected ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400")}>
-                        {isConnected ? "Connected" : "Offline"}
-                      </span>
+                <div className="flex items-end justify-between h-14 gap-3 pb-2 border-b border-slate-200 dark:border-white/10">
+                  {/* Mocking the data chart bars for aesthetics, binding to dialogue balance */}
+                  {[dialogueBalance, 100-dialogueBalance, Math.max(20, dialogueBalance-10), Math.min(90, dialogueBalance+20), 60, 45].map((val, i) => (
+                    <div key={i} className="flex-1 flex flex-col justify-end group animate-all">
+                      <div 
+                        className="w-full rounded-t-sm transition-all duration-500 bg-gradient-to-t from-sky-600 to-sky-400 opacity-80 group-hover:opacity-100" 
+                        style={{ height: `${val}%` }} 
+                      />
                     </div>
-                    
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 font-medium">Audio Pipeline</span>
-                      <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider", stream && !isMicMuted ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400")}>
-                        {stream && !isMicMuted ? "PCM 16kHz" : "Muted"}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 font-medium">Vision Input</span>
-                      <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider", stream ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-500/10 text-slate-400")}>
-                        {stream ? "VP8 Active" : "Disabled"}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 font-medium">Interactive Sharing</span>
-                      <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider", isCapturing ? "bg-sky-500/10 text-sky-400" : "bg-slate-500/10 text-slate-400")}>
-                        {isCapturing ? "Screen Casting" : "Inactive"}
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-
-                {/* Conversation Dynamics */}
-                <div className="space-y-3 flex-1 flex flex-col justify-center">
-                  <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-widest shrink-0">Dialogue Dynamics</h4>
-                  
-                  <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 space-y-4 flex-1 flex flex-col justify-center">
-                    <div>
-                      <div className="flex justify-between text-[10px] font-bold text-white/70 mb-1.5 uppercase tracking-wider">
-                        <span>Dialogue Balance</span>
-                        <span className="text-sky-400 font-mono font-bold">{dialogueBalance}% Founder</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden flex">
-                        <div className="h-full bg-sky-500 transition-all duration-500 ease-out" style={{ width: `${dialogueBalance}%` }} />
-                        <div className="h-full bg-indigo-500 transition-all duration-500 ease-out" style={{ width: `${100 - dialogueBalance}%` }} />
-                      </div>
-                      <div className="flex justify-between text-[9px] text-white/40 mt-1 font-medium">
-                        <span>You speaking</span>
-                        <span>Panel speaking</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <div className="bg-slate-800/40 p-2.5 rounded-xl text-center border border-white/5">
-                        <span className="text-[9px] font-bold text-white/40 uppercase block mb-0.5">Your Turns</span>
-                        <span className="text-lg font-bold font-mono text-white">{userMsgCount}</span>
-                      </div>
-                      <div className="bg-slate-800/40 p-2.5 rounded-xl text-center border border-white/5">
-                        <span className="text-[9px] font-bold text-white/40 uppercase block mb-0.5">Panel Responses</span>
-                        <span className="text-lg font-bold font-mono text-white">{aiMsgCount}</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex justify-between text-[9px] font-bold text-slate-400 dark:text-white/40 uppercase tracking-widest mt-3">
+                  <span>Founder</span>
+                  <span>Dynamics</span>
+                  <span>Panel</span>
                 </div>
               </div>
             );
@@ -3682,7 +3853,7 @@ export default function LoginPage() {
         className="w-full max-w-[1000px] bg-white dark:bg-zinc-900 rounded-[40px] shadow-2xl shadow-slate-200 dark:shadow-black/20 overflow-hidden flex flex-col lg:flex-row transition-colors"
       >
         <div className="flex-1 p-8 md:p-16">
-          {/* ðŸ”¥ FIX 1: Wrapped Logo in a Link back to the Landing Page */}
+          {/* 🔥 FIX 1: Wrapped Logo in a Link back to the Landing Page */}
           <Link to="/" className="flex items-center gap-3 mb-12 w-fit hover:opacity-80 transition-opacity">
             <div className={cn("w-10 h-10 flex items-center justify-center overflow-hidden rounded-xl", logoError && "bg-sky-500 text-white shadow-lg shadow-sky-200")}>
               {!logoError ? <img src="/PitchNest Logo.png" alt="Logo" className="w-full h-full object-contain" onError={() => setLogoError(true)} /> : <Rocket size={24} fill="currentColor" />}
@@ -3714,7 +3885,7 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" size={18} />
-                <input {...register('password')} type={showPassword ? "text" : "password"} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" className={cn("w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-zinc-800 border rounded-2xl focus:outline-none focus:ring-2 transition-all dark:text-zinc-100", errors.password ? "border-rose-500 focus:ring-rose-500/20" : "border-slate-200 dark:border-zinc-700 focus:ring-sky-500/20")} />
+                <input {...register('password')} type={showPassword ? "text" : "password"} placeholder="••••••••" className={cn("w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-zinc-800 border rounded-2xl focus:outline-none focus:ring-2 transition-all dark:text-zinc-100", errors.password ? "border-rose-500 focus:ring-rose-500/20" : "border-slate-200 dark:border-zinc-700 focus:ring-sky-500/20")} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors outline-none">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
               </div>
               {errors.password && <p className="text-xs font-bold text-rose-500">{errors.password.message}</p>}
@@ -3729,7 +3900,7 @@ export default function LoginPage() {
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100 dark:border-zinc-800"></div></div>
             <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold text-slate-400 dark:text-zinc-500"><span className="bg-white dark:bg-zinc-900 px-4">Or continue with</span></div>
           </div>
-          {/* ðŸ”¥ FIX 3: Explicit button type added */}
+          {/* 🔥 FIX 3: Explicit button type added */}
           <button type="button" onClick={(e) => e.preventDefault()} className="w-full py-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 font-bold rounded-2xl hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all flex items-center justify-center gap-3">
             <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
             Continue with Google
@@ -3878,7 +4049,7 @@ function formatDate(timestamp: string): string {
 
 // Helper to format duration
 function formatDuration(seconds: number): string {
-  if (!seconds) return "â€”";
+  if (!seconds) return "—";
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}m ${s}s`;
@@ -4018,7 +4189,7 @@ export default function MyPitchesArchive() {
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Total Pitches</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-zinc-100">
-                    {isLoading ? "â€”" : `${sessions.length} Session${sessions.length !== 1 ? 's' : ''}`}
+                    {isLoading ? "—" : `${sessions.length} Session${sessions.length !== 1 ? 's' : ''}`}
                   </p>
                 </div>
               </div>
@@ -4030,7 +4201,7 @@ export default function MyPitchesArchive() {
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Avg. Pitch Score</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-zinc-100">
-                    {isLoading ? "â€”" : `${avgScore}/100`}
+                    {isLoading ? "—" : `${avgScore}/100`}
                   </p>
                 </div>
               </div>
@@ -4095,21 +4266,21 @@ export default function Onboarding() {
     navigate('/dashboard');
   };
 
-  // âœ… FIX: Added Skip Onboarding function
+  // ✅ FIX: Added Skip Onboarding function
   const handleSkip = () => {
     localStorage.setItem('pitchnest_onboarding_complete', 'true');
     localStorage.setItem('pitchnest_startup_name', "My Startup");
     navigate('/dashboard');
   };
 
-  // ðŸ”¥ FIX 1: Extracted the step content into a switch statement so AnimatePresence can properly hook into the changing 'key'
+  // 🔥 FIX 1: Extracted the step content into a switch statement so AnimatePresence can properly hook into the changing 'key'
   const renderStepContent = () => {
     switch (step) {
       case 1:
         return (
           <div className="flex-1 flex flex-col justify-center h-full">
             <h2 className="text-3xl font-bold text-slate-900 dark:text-zinc-100 mb-3">
-              Welcome aboard, {user?.name?.split(' ')[0] || 'Founder'}! ðŸ‘‹
+              Welcome aboard, {user?.name?.split(' ')[0] || 'Founder'}! 👋
             </h2>
             <p className="text-slate-500 dark:text-zinc-400 text-lg mb-8 leading-relaxed">
               Let's get your AI environment set up. What is the name of the startup or project you are pitching?
@@ -4246,7 +4417,7 @@ export default function Onboarding() {
         <div className="w-[800px] h-[800px] bg-sky-500/10 rounded-full blur-[120px] opacity-50" />
       </div>
 
-      {/* âœ… FIX: Skip Button */}
+      {/* ✅ FIX: Skip Button */}
       <button 
         onClick={handleSkip} 
         className="absolute top-8 right-8 text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm font-bold transition-colors z-20"
@@ -4280,7 +4451,7 @@ export default function Onboarding() {
         <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-[40px] p-8 md:p-12 shadow-2xl shadow-slate-200 dark:shadow-none overflow-hidden relative flex-1 flex flex-col">
           <AnimatePresence mode="wait">
             <motion.div 
-              key={step} // ðŸ”¥ The key prop forces Framer Motion to trigger exit/initial animations
+              key={step} // 🔥 The key prop forces Framer Motion to trigger exit/initial animations
               initial={{ opacity: 0, x: 20 }} 
               animate={{ opacity: 1, x: 0 }} 
               exit={{ opacity: 0, x: -20 }}
@@ -4369,7 +4540,7 @@ const DeckCard = ({ name, date, status, image, fileUrl, onRemove }: { name: stri
         </p>
       </div>
       <div className="space-y-3">
-        {/* ðŸ”¥ FIX 1: Removed the dead "Edit" button and made Preview span full width */}
+        {/* 🔥 FIX 1: Removed the dead "Edit" button and made Preview span full width */}
         <div className="grid grid-cols-1 gap-3">
           <a 
             href={fileUrl || "#"} 
@@ -4407,11 +4578,11 @@ export default function PitchDecksManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  // ðŸ“¡ Fetch Decks 
+  // 📡 Fetch Decks 
   useEffect(() => {
     const fetchDecks = async () => {
       try {
-        // ðŸ”¥ FIX 2: Added cache-buster so deleted/uploaded decks sync perfectly
+        // 🔥 FIX 2: Added cache-buster so deleted/uploaded decks sync perfectly
         const response = await authFetch(`/api/decks?t=${Date.now()}`, {
           headers: {
             'Cache-Control': 'no-cache',
@@ -4437,7 +4608,7 @@ export default function PitchDecksManagement() {
     fetchDecks();
   }, []);
 
-  // â˜ï¸ Upload File 
+  // ☁️ Upload File 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setUploadedFiles(prev => [...acceptedFiles, ...prev]);
 
@@ -4588,7 +4759,7 @@ export default function PitchDecksManagement() {
               <div className="card h-[300px] p-6 space-y-4"><Skeleton className="w-full h-32 rounded-xl" /><Skeleton className="w-3/4 h-6" /><Skeleton className="w-1/2 h-4" /></div>
             </>
           ) : decks.length === 0 ? (
-            // ðŸ”¥ FIX 3: Centered empty state spanning the full layout accurately
+            // 🔥 FIX 3: Centered empty state spanning the full layout accurately
             <div className="md:col-span-1 lg:col-span-2 flex flex-col items-center justify-center p-10 text-slate-400 border-2 border-dashed border-slate-100 dark:border-zinc-800 rounded-[32px]">
               <FileText size={48} className="mb-4 opacity-50" />
               <p>No pitch decks uploaded yet.</p>
@@ -5248,7 +5419,7 @@ export default function PrePitchSetup() {
     resolver: zodResolver(setupSchema),
     defaultValues: {
       mode: 'panel', 
-      // ðŸ”¥ FIX 1: Frictionless defaults so judges don't get stuck on validation
+      // 🔥 FIX 1: Frictionless defaults so judges don't get stuck on validation
       businessName: 'My Startup', 
       description: 'We are building the next generation of AI tools for enterprise.', 
       industry: 'SaaS & Enterprise',
@@ -5329,7 +5500,7 @@ export default function PrePitchSetup() {
               <div className="space-y-1.5 col-span-2 md:col-span-1">
                 <div className="flex justify-between">
                   <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 flex items-center gap-1.5"><Briefcase size={14} className="text-sky-500"/> Startup Name</label>
-                  {/* ðŸ”¥ FIX 2: Visible error message so user knows why the form won't submit */}
+                  {/* 🔥 FIX 2: Visible error message so user knows why the form won't submit */}
                   {errors.businessName && <span className="text-[10px] text-rose-500 font-bold">{errors.businessName.message}</span>}
                 </div>
                 <input {...register('businessName')} type="text" placeholder="e.g. PitchNest AI" className={cn("w-full px-3 py-2 text-sm bg-slate-50 dark:bg-zinc-800 border rounded-xl focus:ring-2 focus:ring-sky-500/20 dark:border-zinc-700 dark:text-zinc-100", errors.businessName && "border-rose-300 focus:ring-rose-500/20")} />
@@ -5377,7 +5548,7 @@ export default function PrePitchSetup() {
                   <hw.icon size={18} className={hw.state ? "text-emerald-500" : "text-slate-400"} />
                   <span className="text-xs font-bold">{hw.label}</span>
                 </div>
-                {/* ðŸ”¥ FIX 3: Safe Radix Switch handling */}
+                {/* 🔥 FIX 3: Safe Radix Switch handling */}
                 <Switch.Root checked={hw.state} onCheckedChange={(checked) => hw.set(checked)} className="w-8 h-4.5 bg-slate-200 dark:bg-zinc-800 rounded-full relative data-[state=checked]:bg-emerald-500 transition-colors">
                   <Switch.Thumb className="block w-3.5 h-3.5 mt-0.5 ml-0.5 bg-white rounded-full transition-transform data-[state=checked]:translate-x-3.5" />
                 </Switch.Root>
@@ -5508,6 +5679,7 @@ export default function ResetPassword() {
   );
 }
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\pages\SettingsPage.tsx
 
 import React, { useState, useEffect } from 'react';
@@ -5574,7 +5746,7 @@ export default function SettingsPage() {
     }
   }, []);
 
-  // ðŸ”¥ FIX: Added full Logout handler to clear local storage and redirect
+  // 🔥 FIX: Added full Logout handler to clear local storage and redirect
   const handleLogout = () => {
     localStorage.removeItem("user");
     navigate('/login');
@@ -5648,7 +5820,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* ðŸ”¥ FIX: Added Sign Out button at the bottom of the profile tab */}
+            {/* 🔥 FIX: Added Sign Out button at the bottom of the profile tab */}
             <div className="mt-auto pt-10 flex justify-end border-t border-slate-100 dark:border-zinc-800">
               <button 
                 onClick={handleLogout}
@@ -5940,11 +6112,11 @@ export default function SignupPage() {
     setIsSubmitting(true);
     setServerError("");
     try {
-      // ðŸ›‘ FIX: NUKE LOCAL STORAGE BEFORE SIGNING UP TO PREVENT DATA BLEED
+      // 🛑 FIX: NUKE LOCAL STORAGE BEFORE SIGNING UP TO PREVENT DATA BLEED
       localStorage.clear(); 
       
       await signup(data.name, data.email, data.password);
-      // ðŸ”¥ FIX 2: Safely route to dashboard to prevent a 404 dead end
+      // 🔥 FIX 2: Safely route to dashboard to prevent a 404 dead end
       navigate('/onboarding');
     } catch (error: any) {
       setServerError(error.message);
@@ -5960,7 +6132,7 @@ export default function SignupPage() {
         className="w-full max-w-[1000px] bg-white dark:bg-zinc-900 rounded-[40px] shadow-2xl shadow-slate-200 dark:shadow-black/20 overflow-hidden flex flex-col lg:flex-row transition-colors"
       >
         <div className="flex-1 p-8 md:p-12">
-          {/* ðŸ”¥ FIX 1: Wrapped the logo in a Link to return to Landing Page */}
+          {/* 🔥 FIX 1: Wrapped the logo in a Link to return to Landing Page */}
           <Link to="/" className="flex items-center gap-3 mb-10 w-fit hover:opacity-80 transition-opacity">
             <div className="w-10 h-10 flex items-center justify-center overflow-hidden rounded-xl bg-sky-500 text-white shadow-lg shadow-sky-200">
               <Rocket size={20} fill="currentColor" />
@@ -5997,7 +6169,7 @@ export default function SignupPage() {
                 <label className="text-xs font-bold text-slate-700 dark:text-zinc-300">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input {...register('password')} type={showPassword ? "text" : "password"} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" className={cn("w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-zinc-800 border rounded-xl focus:outline-none focus:ring-2 transition-all dark:text-zinc-100 text-sm", errors.password ? "border-rose-500 focus:ring-rose-500/20" : "border-slate-200 dark:border-zinc-700 focus:ring-sky-500/20")} />
+                  <input {...register('password')} type={showPassword ? "text" : "password"} placeholder="••••••••" className={cn("w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-zinc-800 border rounded-xl focus:outline-none focus:ring-2 transition-all dark:text-zinc-100 text-sm", errors.password ? "border-rose-500 focus:ring-rose-500/20" : "border-slate-200 dark:border-zinc-700 focus:ring-sky-500/20")} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 outline-none">
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -6008,7 +6180,7 @@ export default function SignupPage() {
                 <label className="text-xs font-bold text-slate-700 dark:text-zinc-300">Confirm Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input {...register('confirmPassword')} type={showConfirmPassword ? "text" : "password"} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" className={cn("w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-zinc-800 border rounded-xl focus:outline-none focus:ring-2 transition-all dark:text-zinc-100 text-sm", errors.confirmPassword ? "border-rose-500 focus:ring-rose-500/20" : "border-slate-200 dark:border-zinc-700 focus:ring-sky-500/20")} />
+                  <input {...register('confirmPassword')} type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" className={cn("w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-zinc-800 border rounded-xl focus:outline-none focus:ring-2 transition-all dark:text-zinc-100 text-sm", errors.confirmPassword ? "border-rose-500 focus:ring-rose-500/20" : "border-slate-200 dark:border-zinc-700 focus:ring-sky-500/20")} />
                   <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 outline-none">
                     {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -6060,7 +6232,7 @@ export default function SignupPage() {
             </div>
 
             <div className="mt-4 flex justify-center gap-2">
-              {/* ðŸ”¥ FIX 3: Explicitly set type="button" to prevent accidental form triggers */}
+              {/* 🔥 FIX 3: Explicitly set type="button" to prevent accidental form triggers */}
               {SLIDES.map((_, i) => (
                 <button key={i} type="button" onClick={() => setCurrentSlide(i)} className={cn("h-2 rounded-full transition-all duration-300 outline-none", i === currentSlide ? "w-8 bg-sky-500" : "w-2 bg-sky-200 dark:bg-zinc-700 hover:bg-sky-300")} />
               ))}
@@ -6073,110 +6245,6 @@ export default function SignupPage() {
     </div>
   );
 }
-
-// Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\App.tsx
-
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import AppLayout from './components/AppLayout';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import Onboarding from './pages/Onboarding';
-import Dashboard from './pages/Dashboard';
-import Analytics from './pages/Analytics';
-import SettingsPage from './pages/SettingsPage';
-import LivePitchRoom from './pages/LivePitchRoom';
-import PostPitchReport from './pages/PostPitchReport';
-import PrePitchSetup from './pages/PrePitchSetup';
-import PitchDecksManagement from './pages/PitchDecksManagement';
-import PitchReplayScreen from './pages/PitchReplayScreen';
-import MyPitchesArchive from './pages/MyPitchesArchive';
-import { SocketProvider } from './contexts/SocketContext';
-import { AuthProvider } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { ErrorBoundary } from './components/ErrorBoundary';
-
-export default function App() {
-  return (
-    <Router>
-      <AuthProvider>
-        <ThemeProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-
-            {/* Protected Routes (Wrapped in AppLayout with Sidebar) */}
-            <Route element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }>
-              <Route path="/dashboard" element={
-                <ErrorBoundary><Dashboard /></ErrorBoundary>
-              } />
-              <Route path="/analytics" element={
-                <ErrorBoundary><Analytics /></ErrorBoundary>
-              } />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/report" element={
-                <ErrorBoundary><PostPitchReport /></ErrorBoundary>
-              } />
-              <Route path="/setup" element={<PrePitchSetup />} />
-              <Route path="/decks" element={<PitchDecksManagement />} />
-              <Route path="/replay" element={
-                <ErrorBoundary><PitchReplayScreen /></ErrorBoundary>
-              } />
-              <Route path="/archive" element={<MyPitchesArchive />} />
-            </Route>
-
-            {/* Special Full-screen Routes (No Sidebar) */}
-            
-            <Route path="/onboarding" element={
-              <ProtectedRoute>
-                <Onboarding />
-              </ProtectedRoute>
-            } />
-
-            {/* LivePitchRoom â€” SocketProvider wraps ONLY this route, not the whole app */}
-            <Route path="/room" element={
-              <ProtectedRoute>
-                <ErrorBoundary>
-                  <SocketProvider>
-                    <LivePitchRoom />
-                  </SocketProvider>
-                </ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            
-            {/* Safety Catch: Redirect old /live links to /room */}
-            <Route path="/live" element={<Navigate to="/room" replace />} />
-
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </ThemeProvider>
-      </AuthProvider>
-    </Router>
-  );
-}
-
-// Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\main.tsx
-
-import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
-
-createRoot(document.getElementById('root')!).render(
-  <App />
-);
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\frontend\src\types.ts
 
@@ -6206,6 +6274,69 @@ export interface SessionRecord {
   metrics: SessionMetricEntry[];
   transcript: TranscriptEntry[];
 }
+
+
+// Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\app.ts
+
+import express from "express";
+import cors from "cors";
+import path from "path";
+import { config } from "./config/env.ts";
+import { uploadDir } from "./services/storageService.ts";
+import authRoutes from "./routes/authRoutes.ts";
+import deckRoutes from "./routes/deckRoutes.ts";
+import uploadRoutes from "./routes/uploadRoutes.ts";
+import sessionRoutes from "./routes/sessionRoutes.ts";
+import profileRoutes from "./routes/profileRoutes.ts";
+import { handleWaitlist } from "./controllers/waitlistController.ts";
+
+const app = express();
+
+// Global Middlewares — CORS restricted to allowed origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  config.allowedOrigin,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow anyway in early stage — tighten later
+    }
+  },
+  credentials: true,
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Serve local uploads statically
+app.use('/uploads', express.static(uploadDir));
+
+// API Routers
+app.use("/api/auth", authRoutes);
+app.use("/api/decks", deckRoutes);
+app.use("/api", uploadRoutes); // Hooks /api/upload-video and /api/upload-deck directly
+app.use("/api/sessions", sessionRoutes);
+app.use("/api/profile", profileRoutes);
+app.post("/api/waitlist", handleWaitlist);
+
+// Health check endpoint
+app.get("/health", (req, res) => res.send("🚀 PitchNest Brain Online!"));
+
+// Frontend Static Build Serving & Single Page App Fallback
+const distPath = path.join(process.cwd(), "../frontend/dist");
+app.use(express.static(distPath));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
+
+export default app;
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\config\env.ts
 
@@ -6246,12 +6377,13 @@ export const config = {
 
 // Check for critical missing configurations
 if (!config.supabaseUrl || !config.supabaseAnonKey) {
-  console.warn("âš ï¸ Warning: SUPABASE_URL or SUPABASE_ANON_KEY is missing in your backend environment variables!");
+  console.warn("⚠️ Warning: SUPABASE_URL or SUPABASE_ANON_KEY is missing in your backend environment variables!");
 }
 
 if (!config.geminiApiKey) {
-  console.error("ðŸš¨ CRITICAL ERROR: GEMINI_API_KEY is missing from environment variables!");
+  console.error("🚨 CRITICAL ERROR: GEMINI_API_KEY is missing from environment variables!");
 }
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\config\supabase.ts
 
@@ -6259,6 +6391,7 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "./env.ts";
 
 export const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\controllers\authController.ts
 
@@ -6457,6 +6590,7 @@ export const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\controllers\deckController.ts
 
 import { Request, Response } from "express";
@@ -6478,13 +6612,20 @@ export const uploadDeck = async (req: Request, res: Response) => {
     let extractedText = "";
     if (req.file.mimetype === "application/pdf") {
       try {
-        // Dynamic import â€” pdf-parse is CJS and has no default ESM export
+        // Dynamic import — pdf-parse is CJS and has no default ESM export
         const pdfParseModule: any = await import("pdf-parse");
-        const parseFn = pdfParseModule.default || pdfParseModule;
-        const pdfData = await parseFn(req.file.buffer);
-        extractedText = pdfData.text || "";
+        
+        if (typeof pdfParseModule.PDFParse === 'function') {
+          const parser = new pdfParseModule.PDFParse({ data: req.file.buffer });
+          const result = await parser.getText();
+          extractedText = result.text || "";
+          await parser.destroy();
+          console.log("✅ Successfully extracted text from PDF using PDFParse class! Length:", extractedText.length);
+        } else {
+          console.warn("⚠️ Warning: Could not resolve PDFParse class in pdf-parse module.", pdfParseModule);
+        }
       } catch (err) {
-        console.warn("âš ï¸ Warning: Failed to parse PDF text:", err);
+        console.warn("⚠️ Warning: Failed to parse PDF text using PDFParse class:", err);
       }
     }
 
@@ -6497,6 +6638,7 @@ export const uploadDeck = async (req: Request, res: Response) => {
 
     let publicUrl = "";
     if (error) {
+      console.warn("⚠️ Supabase storage upload failed, using local fallback. Storage Error:", error);
       // Local fallback
       const localFileName = `${Date.now()}_${originalName}`;
       fs.writeFileSync(path.join(uploadDir, localFileName), req.file.buffer);
@@ -6518,26 +6660,19 @@ export const uploadDeck = async (req: Request, res: Response) => {
       .single();
 
     if (dbError) {
-      if (dbError.code === '42703') {
-        console.warn("âš ï¸ Warning: Supabase 'decks' table is missing columns. Falling back to un-filtered insert without new columns.");
-        // Try without extracted_text if the column is missing
-        const fallbackData = { name: deckName, file_url: publicUrl, size: sizeMB, status: 'READY' };
-        if (userId) (fallbackData as any).user_id = userId;
-        
-        let fallback = await supabase.from("decks").insert([fallbackData]).select().single();
-        if (fallback.error && fallback.error.code === '42703') {
-            // Fallback for missing user_id as well
-            const basicData = { name: deckName, file_url: publicUrl, size: sizeMB, status: 'READY' };
-            fallback = await supabase.from("decks").insert([basicData]).select().single();
-        }
-
-        if (fallback.error || !fallback.data) {
-          return res.status(500).json({ error: "Failed to save deck to database" });
-        }
-        dbData = fallback.data;
-      } else {
-        return res.status(500).json({ error: "Failed to save deck to database" });
+      console.error("❌ Primary Supabase insertion failed:", dbError);
+      console.warn("⚠️ Warning: Primary insert failed. Executing resilient database insert fallback (omitting optional user_id and extracted_text)...");
+      
+      const fallbackData = { name: deckName, file_url: publicUrl, size: sizeMB, status: 'READY' };
+      let fallback = await supabase.from("decks").insert([fallbackData]).select().single();
+      
+      if (fallback.error) {
+        console.error("❌ Resilient database insert fallback also failed:", fallback.error);
+        return res.status(500).json({ error: "Failed to save deck to database (All insertions failed)" });
       }
+      
+      console.log("✅ Success! Resilient insert fallback successfully saved deck in database!");
+      dbData = fallback.data;
     }
 
     res.status(200).json({
@@ -6549,7 +6684,8 @@ export const uploadDeck = async (req: Request, res: Response) => {
       extracted_text: extractedText
     });
   } catch (error) { 
-    res.status(500).json({ error: "Error uploading deck" }); 
+    console.error("❌ Fatal error in uploadDeck controller:", error);
+    res.status(500).json({ error: "Error uploading deck (Fatal exception)" }); 
   }
 };
 
@@ -6571,7 +6707,7 @@ export const listDecks = async (req: Request, res: Response) => {
 
     if (error) {
       if (error.code === '42703') {
-        console.warn("âš ï¸ Warning: Supabase 'decks' table is missing the 'user_id' column. Please run the SQL migration. Falling back to un-filtered query.");
+        console.warn("⚠️ Warning: Supabase 'decks' table is missing the 'user_id' column. Please run the SQL migration. Falling back to un-filtered query.");
         const fallback = await supabase
           .from("decks")
           .select("*")
@@ -6606,7 +6742,7 @@ export const deleteDeck = async (req: Request, res: Response) => {
 
     if (error) {
       if (error.code === '42703') {
-        console.warn("âš ï¸ Warning: Supabase 'decks' table is missing the 'user_id' column. Please run the SQL migration. Falling back to un-filtered query.");
+        console.warn("⚠️ Warning: Supabase 'decks' table is missing the 'user_id' column. Please run the SQL migration. Falling back to un-filtered query.");
         const fallback = await supabase
           .from("decks")
           .delete()
@@ -6621,6 +6757,7 @@ export const deleteDeck = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to delete deck" }); 
   }
 };
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\controllers\profileController.ts
 
@@ -6649,13 +6786,13 @@ export const saveProfile = async (req: Request, res: Response) => {
       .single();
 
     if (error) {
-      console.error("âŒ Profile save error:", error);
+      console.error("❌ Profile save error:", error);
       return res.status(500).json({ error: "Failed to save profile." });
     }
 
     res.status(200).json(data);
   } catch (error) {
-    console.error("âŒ Profile save exception:", error);
+    console.error("❌ Profile save exception:", error);
     res.status(500).json({ error: "Failed to save profile." });
   }
 };
@@ -6675,17 +6812,18 @@ export const getProfile = async (req: Request, res: Response) => {
       .maybeSingle();
 
     if (error) {
-      console.error("âŒ Profile fetch error:", error);
+      console.error("❌ Profile fetch error:", error);
       return res.status(500).json({ error: "Failed to fetch profile." });
     }
 
     // Return empty object if no profile exists yet (user hasn't onboarded)
     res.status(200).json(data || {});
   } catch (error) {
-    console.error("âŒ Profile fetch exception:", error);
+    console.error("❌ Profile fetch exception:", error);
     res.status(500).json({ error: "Failed to fetch profile." });
   }
 };
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\controllers\sessionController.ts
 
@@ -6711,7 +6849,7 @@ export const listSessions = async (req: Request, res: Response) => {
 
     if (error) {
       if (error.code === '42703') {
-        console.warn("âš ï¸ Warning: Supabase 'sessions' table is missing the 'user_id' column. Please run the SQL migration. Falling back to un-filtered query.");
+        console.warn("⚠️ Warning: Supabase 'sessions' table is missing the 'user_id' column. Please run the SQL migration. Falling back to un-filtered query.");
         const fallback = await supabase
           .from("sessions")
           .select("*")
@@ -6759,7 +6897,7 @@ export const getSession = async (req: Request, res: Response) => {
 
     if (error) {
       if (error.code === '42703') {
-        console.warn("âš ï¸ Warning: Supabase 'sessions' table is missing columns. Falling back to simple query.");
+        console.warn("⚠️ Warning: Supabase 'sessions' table is missing columns. Falling back to simple query.");
         const fallback = await supabase
           .from("sessions")
           .select("*")
@@ -6811,7 +6949,7 @@ export const deleteSession = async (req: Request, res: Response) => {
 
     if (error) {
       if (error.code === '42703') {
-        console.warn("âš ï¸ Warning: Supabase 'sessions' table is missing the 'user_id' column. Please run the SQL migration. Falling back to un-filtered query.");
+        console.warn("⚠️ Warning: Supabase 'sessions' table is missing the 'user_id' column. Please run the SQL migration. Falling back to un-filtered query.");
         const fallback = await supabase
           .from("sessions")
           .delete()
@@ -6826,6 +6964,7 @@ export const deleteSession = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to delete session" }); 
   }
 };
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\controllers\uploadController.ts
 
@@ -6866,6 +7005,7 @@ export const uploadVideo = async (req: Request, res: Response) => {
   }
 };
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\controllers\waitlistController.ts
 
 import { Request, Response } from "express";
@@ -6895,7 +7035,7 @@ export const handleWaitlist = async (req: Request, res: Response) => {
       .insert([{ email: cleanEmail }]);
 
     if (error) {
-      console.warn("âš ï¸ Warning: Supabase 'waitlist' table is missing. Saving to local waitlist.json instead.");
+      console.warn("⚠️ Warning: Supabase 'waitlist' table is missing. Saving to local waitlist.json instead.");
       
       // Fallback: save to local waitlist.json
       let list: string[] = [];
@@ -6912,10 +7052,11 @@ export const handleWaitlist = async (req: Request, res: Response) => {
 
     res.status(200).json({ success: true, message: "Thank you for signing up!" });
   } catch (error) {
-    console.error("âŒ Waitlist error:", error);
+    console.error("❌ Waitlist error:", error);
     res.status(500).json({ error: "Failed to sign up." });
   }
 };
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\middleware\authMiddleware.ts
 
@@ -6956,6 +7097,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   }
 };
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\routes\authRoutes.ts
 
 import { Router } from "express";
@@ -6975,7 +7117,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Database wipe â€” ONLY available in development mode
+// Database wipe — ONLY available in development mode
 if (config.nodeEnv === "development") {
   router.get("/wipe", wipeDb);
 }
@@ -6990,6 +7132,7 @@ router.get("/me", authMiddleware, (req, res) => {
 });
 
 export default router;
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\routes\deckRoutes.ts
 
@@ -7006,6 +7149,7 @@ router.delete("/:id", authMiddleware, deleteDeck);
 
 export default router;
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\routes\profileRoutes.ts
 
 import { Router } from "express";
@@ -7018,6 +7162,7 @@ router.post("/", authMiddleware, saveProfile);
 router.get("/", authMiddleware, getProfile);
 
 export default router;
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\routes\sessionRoutes.ts
 
@@ -7033,6 +7178,7 @@ router.delete("/:id", authMiddleware, deleteSession);
 
 export default router;
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\routes\uploadRoutes.ts
 
 import { Router } from "express";
@@ -7047,6 +7193,7 @@ router.post("/upload-video", authMiddleware, upload.single("video"), uploadVideo
 router.post("/upload-deck", authMiddleware, upload.single("deck"), uploadDeck);
 
 export default router;
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\services\aiService.ts
 
@@ -7123,6 +7270,12 @@ Return this exact JSON structure:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: evaluationPrompt }] }],
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+          ],
           generationConfig: { 
             temperature: 0.2, 
             maxOutputTokens: 2048,
@@ -7132,13 +7285,25 @@ Return this exact JSON structure:
       }
     );
 
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      console.error(`❌ Gemini HTTP ${response.status} on evaluation (attempt ${attempt}):`, errorBody.substring(0, 300));
+      if (attempt < 3) return callGemini(attempt + 1);
+      throw new Error(`Gemini returned HTTP ${response.status} after 3 attempts.`);
+    }
+
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const candidate = data.candidates?.[0];
+    const rawText = candidate?.content?.parts?.[0]?.text || "";
     
     if (!rawText || rawText.trim().length === 0) {
-      console.warn(`âš ï¸ Gemini returned empty response (attempt ${attempt})`);
-      if (attempt < 2) return callGemini(attempt + 1);
-      throw new Error("Gemini returned empty evaluation after 2 attempts.");
+      console.warn(`⚠️ Gemini returned empty response (attempt ${attempt})`);
+      console.warn(`⚠️ Full Gemini Data: ${JSON.stringify(data)}`);
+      if (candidate?.finishReason) {
+         console.warn(`⚠️ Finish Reason: ${candidate.finishReason}`);
+      }
+      if (attempt < 3) return callGemini(attempt + 1);
+      throw new Error("Gemini returned empty evaluation after 3 attempts.");
     }
 
     try {
@@ -7149,11 +7314,11 @@ Return this exact JSON structure:
         try {
           return JSON.parse(jsonMatch[0]);
         } catch (innerErr) {
-          console.error("âŒ Failed to parse extracted JSON block:", innerErr);
+          console.error("❌ Failed to parse extracted JSON block:", innerErr);
         }
       }
-      console.error("âŒ Raw Gemini evaluation response text:", rawText.substring(0, 500));
-      if (attempt < 2) return callGemini(attempt + 1);
+      console.error("❌ Raw Gemini evaluation response text:", rawText.substring(0, 500));
+      if (attempt < 3) return callGemini(attempt + 1);
       throw new Error("No valid JSON block found in response.");
     }
   };
@@ -7180,8 +7345,7 @@ export function getMasterPrompt(isCoach: boolean, businessName: string, configDa
           CRITICAL DIRECTIVE: Speak naturally, supportively, and conversationally.
           - You are Riley, an elite Startup Pitch Coach.
           - Speak exactly as a real human coach would in a live 1-on-1 video call.
-          - ABSOLUTELY NEVER output internal thoughts, thinking headers, action labels, section titles, or stage directions.
-          - Examples of FORBIDDEN output: "Interpreting the Context", "Analyzing the Deck's Content", "Confirming Deck Access", "Rephrasing the Core Question"
+          - YOU MUST ONLY OUTPUT THE EXACT SPOKEN WORDS. No stage directions, no asterisks, no narration, no internal thoughts.
           - Do NOT prefix your output with "Riley:".
           - Start speaking immediately with your actual words. No preamble.
           
@@ -7199,12 +7363,13 @@ export function getMasterPrompt(isCoach: boolean, businessName: string, configDa
           CRITICAL DIRECTIVE: Speak naturally, dynamically, and conversationally.
           - You represent a live, real-time multi-person Venture Capital panel: Marcus (the Skeptic/Lead), Sarah (the Analyst), and Chen (the Tech expert).
           - Speak exactly as real humans would in a high-stakes Y-Combinator style boardroom.
-          - ABSOLUTELY NEVER output internal thoughts, thinking headers, action labels, section titles, or stage directions.
-          - Examples of FORBIDDEN output: "Interpreting the Context", "Analyzing the Deck's Content", "Initiating Immediate Analysis", "Rephrasing the Core Question", "Confirming Deck Access"
-          - Your output must ONLY contain the actual spoken words of the panelists. Nothing else.
+          - ABSOLUTE PROHIBITION ON META-TALK AND CHAIN OF THOUGHT: You must NEVER explain your thought process, plan your actions, or write down what you are going to do. NEVER output phrases like "I've successfully synthesized...", "I am focusing on...", "I will execute...", "I've crafted...", "I've refined...", "Okay, so the user said...", or "Right, I need to". 
+          - DO NOT write stage directions or describe your behavior. Just say the exact words you are speaking as the active character.
+          - YOU MUST ONLY OUTPUT THE EXACT SPOKEN WORDS. Do NOT use asterisks for actions. Do NOT use headers.
+          - Your output must ONLY contain the spoken dialogue that the user will hear out loud.
           - Do NOT prefix lines with "Marcus:", "Sarah:", or "Chen:". 
           - IMPORTANT: When switching speakers, the new speaker MUST say their name naturally at the start, e.g.:
-            "Sarah here â€” I want to dig into your margins..."
+            "Sarah here — I want to dig into your margins..."
             "Let me jump in, this is Chen. Your architecture concerns me..."
             "Marcus again. I'm not buying this TAM number..."
 
@@ -7232,8 +7397,8 @@ export function getMasterPrompt(isCoach: boolean, businessName: string, configDa
  */
 export async function checkApiKeyStatus(): Promise<void> {
   if (!config.geminiApiKey || config.geminiApiKey === "your_gemini_api_key_here") {
-    console.error("\nðŸš¨ WARNING: GEMINI_API_KEY is not set or is using the placeholder 'your_gemini_api_key_here' inside your backend/.env file!");
-    console.error("ðŸ‘‰ Please get a free API Key from AI Studio (https://aistudio.google.com/) and paste it into backend/.env\n");
+    console.error("\n🚨 WARNING: GEMINI_API_KEY is not set or is using the placeholder 'your_gemini_api_key_here' inside your backend/.env file!");
+    console.error("👉 Please get a free API Key from AI Studio (https://aistudio.google.com/) and paste it into backend/.env\n");
     return;
   }
 
@@ -7250,21 +7415,22 @@ export async function checkApiKeyStatus(): Promise<void> {
     );
 
     if (res.status === 429) {
-      console.error("\nðŸš¨ RESOURCE EXHAUSTED: Your Gemini API Key has run out of its free tier quota limit!");
-      console.error("ðŸ‘‰ To fix this, please wait a minute or get a fresh API Key from Google AI Studio (https://aistudio.google.com/) and paste it into backend/.env\n");
+      console.error("\n🚨 RESOURCE EXHAUSTED: Your Gemini API Key has run out of its free tier quota limit!");
+      console.error("👉 To fix this, please wait a minute or get a fresh API Key from Google AI Studio (https://aistudio.google.com/) and paste it into backend/.env\n");
     } else if (res.status === 400 || res.status === 403) {
-      console.error("\nðŸš¨ INVALID API KEY: The Gemini API Key provided is invalid or rejected by Google!");
-      console.error("ðŸ‘‰ Please verify your key in backend/.env or fetch a new one from https://aistudio.google.com/\n");
+      console.error("\n🚨 INVALID API KEY: The Gemini API Key provided is invalid or rejected by Google!");
+      console.error("👉 Please verify your key in backend/.env or fetch a new one from https://aistudio.google.com/\n");
     } else if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      console.warn(`\nâš ï¸ Gemini API Status Check: Received HTTP ${res.status}. Message: ${data.error?.message || "Unknown error"}\n`);
+      console.warn(`\n⚠️ Gemini API Status Check: Received HTTP ${res.status}. Message: ${data.error?.message || "Unknown error"}\n`);
     } else {
-      console.log("\nðŸŸ¢ Gemini API Status Check: Connection successful and key quota is healthy!\n");
+      console.log("\n🟢 Gemini API Status Check: Connection successful and key quota is healthy!\n");
     }
   } catch (err: any) {
-    console.error("\nâš ï¸ Failed to connect to Gemini API during startup check. Network error:", err.message || err, "\n");
+    console.error("\n⚠️ Failed to connect to Gemini API during startup check. Network error:", err.message || err, "\n");
   }
 }
+
 
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\services\storageService.ts
 
@@ -7289,6 +7455,7 @@ export const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 }
 });
 
+
 // Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\sockets\liveSocket.ts
 
 import { WebSocket, WebSocketServer } from "ws";
@@ -7306,11 +7473,12 @@ export function initLiveSocket(wss: WebSocketServer) {
     let lastUserActivityTime = Date.now();
     let hasNudged = false;
     let idleCheckInterval: ReturnType<typeof setInterval> | null = null;
+    let sessionId = 0;
 
-    console.log("âœ… Client connected to PitchNest Brain");
+    console.log("✅ Client connected to PitchNest Brain");
 
     if (!config.geminiApiKey) {
-      console.error("ðŸš¨ CRITICAL ERROR: GEMINI_API_KEY is missing from environment variables!");
+      console.error("🚨 CRITICAL ERROR: GEMINI_API_KEY is missing from environment variables!");
       return ws.send(JSON.stringify({ type: "error", message: "API Key Missing" }));
     }
 
@@ -7319,21 +7487,21 @@ export function initLiveSocket(wss: WebSocketServer) {
     );
 
     aiWs.on("error", (error) => {
-      console.error("âŒ Gemini Live WebSocket error:", error);
+      console.error("❌ Gemini Live WebSocket error:", error);
     });
 
     aiWs.on("close", (code, reason) => {
-      console.log(`ðŸ”Œ Gemini Live WebSocket closed. Code: ${code}, Reason: ${reason.toString()}`);
+      console.log(`🔌 Gemini Live WebSocket closed. Code: ${code}, Reason: ${reason.toString()}`);
     });
 
     ws.on("close", () => {
-      console.log("ðŸ”Œ Client disconnected. Cleaning up AI socket.");
+      console.log("🔌 Client disconnected. Cleaning up AI socket.");
       if (idleCheckInterval) clearInterval(idleCheckInterval);
       if (aiWs.readyState === WebSocket.OPEN) aiWs.close();
     });
 
     aiWs.on("open", () => {
-      console.log("ðŸŸ¢ Gemini Live WebSocket connected successfully!");
+      console.log("🟢 Gemini Live WebSocket connected successfully!");
       ws.send(JSON.stringify({ type: "status", status: "vertex_ready" }));
     });
 
@@ -7341,7 +7509,7 @@ export function initLiveSocket(wss: WebSocketServer) {
       try {
         const response = JSON.parse(data.toString());
         if (response.setupComplete) {
-          console.log("ðŸŸ¢ Gemini setup complete! Triggering pitch introduction...");
+          console.log("🟢 Gemini setup complete! Triggering pitch introduction...");
           if (aiWs.readyState === WebSocket.OPEN) {
             aiWs.send(JSON.stringify({ 
               clientContent: { 
@@ -7359,8 +7527,19 @@ export function initLiveSocket(wss: WebSocketServer) {
           const modelTurn = response.serverContent?.modelTurn;
           if (modelTurn?.parts) {
             modelTurn.parts.forEach((part: any) => {
+              // Discard any thinking/reasoning process parts (Gemini 2.5 chain-of-thought blocks)
+              if (part.thought) {
+                console.log("🤫 Filtered out Gemini thinking part:", part.text);
+                return;
+              }
               if (part.text) {
                 let cleanText = part.text;
+                
+                // Drop meta-talk or chain-of-thought leakages
+                if (/^(?:Okay, so the user said|Right, I need to|Okay, so|I need to keep this|I'm structuring the initial|I've successfully synthesized|I will execute Marcus|I've crafted Marcus's|I've refined Marcus's|I am focusing on)/i.test(cleanText)) {
+                  console.log("🤫 Filtered out residual meta-talk phrase:", cleanText);
+                  return;
+                }
                 // Strip markdown formatting
                 cleanText = cleanText.replace(/\[[^\]]*\]/g, '');
                 cleanText = cleanText.replace(/\([^\)]*\)/g, '');
@@ -7368,7 +7547,7 @@ export function initLiveSocket(wss: WebSocketServer) {
                 // Strip "Name:" prefixes
                 cleanText = cleanText.replace(/^(marcus|riley|sarah|chen|investor|founder):\s*/i, '');
                 
-                // Strip thinking/action headers â€” any Title Case phrase that looks like internal monologue
+                // Strip thinking/action headers — any Title Case phrase that looks like internal monologue
                 // e.g. "Interpreting the Context", "Analyzing the Deck's Content", "Rephrasing the Core Question"
                 cleanText = cleanText.replace(/^[A-Z][a-z]+(?:[\s'-]+[A-Za-z]+){1,6}\s*$/gm, '');
                 // Strip lines that are just a header followed by nothing useful
@@ -7413,6 +7592,13 @@ export function initLiveSocket(wss: WebSocketServer) {
 
         if (data.type === "set_video_url") {
           currentVideoUrl = data.url;
+          if (sessionId && config.supabaseUrl && config.supabaseAnonKey) {
+            try {
+              await supabase.from('sessions').update({ video_url: currentVideoUrl }).eq('id', sessionId);
+            } catch (e) {
+              console.error("Failed to async update video URL:", e);
+            }
+          }
           return;
         }
 
@@ -7435,16 +7621,16 @@ export function initLiveSocket(wss: WebSocketServer) {
           aiWs.send(JSON.stringify({
             setup: {
               model: `models/${bidiModel}`,
-              tools: [{ googleSearch: {} }],
               generationConfig: {
                 responseModalities: ["AUDIO"],
-                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: agentVoice } } }
+                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: agentVoice } } },
+                thinkingConfig: { thinkingBudget: 0 } // Disable thinking to reduce latency and eliminate meta-thought generation
               },
               systemInstruction: { parts: [{ text: masterPrompt }] }
             }
           }));
 
-          // Start idle detection â€” nudge at 2min, auto-end at 4min
+          // Start idle detection — nudge at 2min, auto-end at 4min
           lastUserActivityTime = Date.now();
           hasNudged = false;
           idleCheckInterval = setInterval(() => {
@@ -7453,14 +7639,14 @@ export function initLiveSocket(wss: WebSocketServer) {
             const END_THRESHOLD = 4 * 60 * 1000;     // 4 minutes
 
             if (idleMs >= END_THRESHOLD) {
-              console.log("â±ï¸ User idle for 4+ minutes. Auto-ending session.");
+              console.log("⏱️ User idle for 4+ minutes. Auto-ending session.");
               if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "idle_end", message: "Session ended due to inactivity. The panel noticed you've been silent for over 4 minutes." }));
               }
               if (idleCheckInterval) clearInterval(idleCheckInterval);
             } else if (idleMs >= NUDGE_THRESHOLD && !hasNudged) {
               hasNudged = true;
-              console.log("â±ï¸ User idle for 2+ minutes. Sending AI nudge.");
+              console.log("⏱️ User idle for 2+ minutes. Sending AI nudge.");
               if (aiWs.readyState === WebSocket.OPEN) {
                 aiWs.send(JSON.stringify({
                   clientContent: {
@@ -7488,8 +7674,10 @@ export function initLiveSocket(wss: WebSocketServer) {
         }
 
         if (data.type === "end_session") {
-          console.log("ðŸ Session ended, starting REST evaluation...");
+          console.log("🏁 Session ended, starting REST evaluation...");
           const frontendTranscript = Array.isArray(data.transcript) ? data.transcript : [];
+          console.log(`📊 Transcript entries: ${frontendTranscript.length}, Business: ${currentBusinessName}, User ID: ${currentUserId}`);
+          console.log(`🔑 Env check — Gemini key: ${config.geminiApiKey ? 'SET' : 'MISSING'}, Supabase URL: ${config.supabaseUrl ? 'SET' : 'MISSING'}`);
           if (aiWs.readyState === WebSocket.OPEN) aiWs.close();
 
           let reportData: any = {
@@ -7501,11 +7689,12 @@ export function initLiveSocket(wss: WebSocketServer) {
           try {
             const evaluated = await evaluatePitch(frontendTranscript, currentBusinessName);
             reportData = { ...reportData, ...evaluated };
+            console.log("✅ Evaluation succeeded! Scores:", reportData.scores);
           } catch (evalErr) { 
-            console.error("âŒ Evaluation failed:", evalErr); 
+            console.error("❌ Evaluation failed:", evalErr); 
           }
 
-          let sessionId = 0;
+          sessionId = 0;
           let shareId = crypto.randomUUID();
           try {
             const insertPayload: any = {
@@ -7525,7 +7714,7 @@ export function initLiveSocket(wss: WebSocketServer) {
 
             if (dbError) {
               if (dbError.code === '42703') {
-                console.warn("âš ï¸ Warning: Supabase 'sessions' table is missing columns (like share_id or user_id). Falling back to un-filtered insert.");
+                console.warn("⚠️ Warning: Supabase 'sessions' table is missing columns (like share_id or user_id). Falling back to un-filtered insert.");
                 const fallbackPayload = {
                   business_name: currentBusinessName,
                   summary: reportData.summary,
@@ -7555,7 +7744,7 @@ export function initLiveSocket(wss: WebSocketServer) {
               if (dbData.share_id) shareId = dbData.share_id;
             }
           } catch (dbErr) { 
-            console.error("âŒ Failed to save session to Supabase:", dbErr); 
+            console.error("❌ Failed to save session to Supabase:", dbErr); 
           }
 
           // Emit real AI-evaluated scores to the client before sending the full report
@@ -7590,49 +7779,3 @@ export function initLiveSocket(wss: WebSocketServer) {
   });
 }
 
-// Filepath: C:\Users\Emmanuel\Documents\PitchNest-Live\backend\src\app.ts
-
-import express from "express";
-import cors from "cors";
-import path from "path";
-import { config } from "./config/env.ts";
-import { uploadDir } from "./services/storageService.ts";
-import authRoutes from "./routes/authRoutes.ts";
-import deckRoutes from "./routes/deckRoutes.ts";
-import uploadRoutes from "./routes/uploadRoutes.ts";
-import sessionRoutes from "./routes/sessionRoutes.ts";
-import profileRoutes from "./routes/profileRoutes.ts";
-import { handleWaitlist } from "./controllers/waitlistController.ts";
-
-const app = express();
-
-// Global Middlewares â€” CORS restricted to allowed origin
-app.use(cors({
-  origin: config.allowedOrigin,
-  credentials: true,
-}));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
-// Serve local uploads statically
-app.use('/uploads', express.static(uploadDir));
-
-// API Routers
-app.use("/api/auth", authRoutes);
-app.use("/api/decks", deckRoutes);
-app.use("/api", uploadRoutes); // Hooks /api/upload-video and /api/upload-deck directly
-app.use("/api/sessions", sessionRoutes);
-app.use("/api/profile", profileRoutes);
-app.post("/api/waitlist", handleWaitlist);
-
-// Health check endpoint
-app.get("/health", (req, res) => res.send("ðŸš€ PitchNest Brain Online!"));
-
-// Frontend Static Build Serving & Single Page App Fallback
-const distPath = path.join(process.cwd(), "../frontend/dist");
-app.use(express.static(distPath));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(distPath, "index.html"));
-});
-
-export default app;
