@@ -27,3 +27,7 @@ uploads/
 
 # OS Files
 .DS_Store
+
+# Local Packing Tools / Cache
+all_my_code.txt
+all_code.txt
