@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { AppState } from 'react-native';
 import { apiPath } from '../config/env';
+import { authRequest, AuthTimeoutError } from '../lib/authApi';
 import { storage } from '../lib/storage';
 import type { User } from '../types';
 
@@ -41,12 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     tokenRef.current = nextToken;
     setUser(nextUser);
     setToken(nextToken);
-    await storage.setUserJson(nextUser);
-    await storage.setToken(nextToken);
+    await Promise.all([storage.setUserJson(nextUser), storage.setToken(nextToken)]);
   }, []);
 
   const validateToken = useCallback(async (storedToken: string) => {
-    const res = await fetch(apiPath('/api/auth/me'), {
+    const res = await authRequest('/api/auth/me', {
       headers: { Authorization: `Bearer ${storedToken}` },
     });
     return res.ok;
@@ -57,23 +57,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const storedToken = await storage.getToken();
         const storedUser = await storage.getUserJson();
-        if (!storedToken || !storedUser) {
-          return;
-        }
-        try {
-          const valid = await validateToken(storedToken);
-          if (valid) {
-            tokenRef.current = storedToken;
-            setToken(storedToken);
-            setUser(storedUser);
-          } else {
-            await clearSession();
-          }
-        } catch {
-          tokenRef.current = storedToken;
-          setToken(storedToken);
-          setUser(storedUser);
-        }
+        if (!storedToken || !storedUser) return;
+
+        tokenRef.current = storedToken;
+        setToken(storedToken);
+        setUser(storedUser);
+
+        validateToken(storedToken)
+          .then((valid) => {
+            if (!valid) clearSession();
+          })
+          .catch(() => {});
       } finally {
         setIsLoading(false);
       }
@@ -95,28 +89,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const res = await fetch(apiPath('/api/auth/login'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-      await persistSession(data.user, data.token);
+      try {
+        const res = await authRequest('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+        await persistSession(data.user, data.token);
+      } catch (err) {
+        if (err instanceof AuthTimeoutError) throw err;
+        throw err instanceof Error ? err : new Error('Login failed');
+      }
     },
     [persistSession]
   );
 
   const signup = useCallback(
     async (name: string, email: string, password: string) => {
-      const res = await fetch(apiPath('/api/auth/signup'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Signup failed');
-      await persistSession(data.user, data.token);
+      try {
+        const res = await authRequest('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Signup failed');
+        await persistSession(data.user, data.token);
+      } catch (err) {
+        if (err instanceof AuthTimeoutError) throw err;
+        throw err instanceof Error ? err : new Error('Signup failed');
+      }
     },
     [persistSession]
   );

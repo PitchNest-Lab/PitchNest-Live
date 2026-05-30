@@ -1,17 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../components/Screen';
 import { colors, radius, spacing } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, getOverallScore, getSessionStatus } from '../lib/utils';
 import type { Session } from '../types';
-import type { RootStackParamList } from '../navigation/types';
+import { useRootNavigation } from '../hooks/useRootNavigation';
 
 export default function HistoryScreen() {
   const { authFetch } = useAuth();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { navigateRoot } = useRootNavigation();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,7 +59,7 @@ export default function HistoryScreen() {
           const score = getOverallScore(session.evaluation_report);
           return (
             <View key={session.id} style={styles.card}>
-              <Pressable style={{ flex: 1 }} onPress={() => navigation.navigate('Report', { sessionId: session.id })}>
+              <Pressable style={{ flex: 1 }} onPress={() => navigateRoot('Report', { sessionId: session.id })}>
                 <Text style={styles.name}>{session.business_name || 'Pitch Session'}</Text>
                 <Text style={styles.meta}>
                   {formatDate(session.created_at)} · {getSessionStatus(score)} · {score || 0}%

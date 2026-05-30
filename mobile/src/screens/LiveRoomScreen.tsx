@@ -10,9 +10,16 @@ import {
   View,
 } from 'react-native';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { Audio } from 'expo-av';
+import {
+  AudioModule,
+  RecordingPresets,
+  createAudioPlayer,
+  setAudioModeAsync,
+} from 'expo-audio';
+import * as FileSystem from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRootNavigation } from '../hooks/useRootNavigation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { DeckSlideViewer, DeckSlideViewerRef } from '../components/DeckSlideViewer';
@@ -22,12 +29,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePitchConfig } from '../contexts/PitchContext';
 import { formatTime, getPersonas, pcm16ToWavBase64 } from '../lib/utils';
 import type { LiveScores, TranscriptEntry } from '../types';
-import type { RootStackParamList } from '../navigation/types';
+import type { PitchStackParamList } from '../navigation/PitchStack';
 
 export default function LiveRoomScreen() {
   const { user } = useAuth();
   const { pitchConfig } = usePitchConfig();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<PitchStackParamList>>();
+  const { navigateRoot } = useRootNavigation();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
 
@@ -50,10 +58,10 @@ export default function LiveRoomScreen() {
   const wsRef = useRef<WebSocket | null>(null);
   const cameraRef = useRef<CameraView>(null);
   const deckRef = useRef<DeckSlideViewerRef>(null);
-  const recordingRef = useRef<Audio.Recording | null>(null);
   const soundQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pitchStartRef = useRef(0);
   const hasSentReadyRef = useRef(false);
+  const endSessionRef = useRef<() => void>(() => {});
 
   const personas = getPersonas(pitchConfig?.investorArchetype || '', pitchConfig?.mode || 'panel');
 
@@ -69,15 +77,16 @@ export default function LiveRoomScreen() {
     soundQueueRef.current = soundQueueRef.current.then(async () => {
       try {
         const wavBase64 = pcm16ToWavBase64(base64Pcm, 24000);
-        const uri = `data:audio/wav;base64,${wavBase64}`;
-        const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
+        const player = createAudioPlayer({ uri: `data:audio/wav;base64,${wavBase64}` });
         await new Promise<void>((resolve) => {
-          sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              sound.unloadAsync();
+          const sub = player.addListener('playbackStatusUpdate', (status) => {
+            if (status.didJustFinish) {
+              sub.remove();
+              player.remove();
               resolve();
             }
           });
+          player.play();
         });
       } catch {
         // ignore playback errors
@@ -108,11 +117,11 @@ export default function LiveRoomScreen() {
             ...prev,
             { id: `idle-${Date.now()}`, text: data.message || 'Session ended due to inactivity.', type: 'ai', speaker: 'System' },
           ]);
-          setTimeout(() => endSession(), 1500);
+          setTimeout(() => endSessionRef.current(), 1500);
         }
         if (data.type === 'report') {
           setIsEvaluating(false);
-          navigation.replace('Report', { sessionId: data.sessionId });
+          navigateRoot('Report', { sessionId: data.sessionId });
         }
         if (data.type === 'error') {
           Alert.alert('Connection error', data.message || 'AI service unavailable');
@@ -122,7 +131,7 @@ export default function LiveRoomScreen() {
       }
     };
     return ws;
-  }, [navigation, playPcmAudio]);
+  }, [navigateRoot, playPcmAudio]);
 
   useEffect(() => {
     const ws = connectSocket();
@@ -153,6 +162,10 @@ export default function LiveRoomScreen() {
       })
     );
   }, [isEvaluating, messages]);
+
+  useEffect(() => {
+    endSessionRef.current = endSession;
+  }, [endSession]);
 
   useEffect(() => {
     if (roomState !== 'live') return;
@@ -210,32 +223,21 @@ export default function LiveRoomScreen() {
 
     let active = true;
     (async () => {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
       const loop = async () => {
+        const recorder = new AudioModule.AudioRecorder(RecordingPresets.LOW_QUALITY);
         while (active && !isMicMuted) {
           try {
-            const recording = new Audio.Recording();
-            await recording.prepareToRecordAsync({
-              ...Audio.RecordingOptionsPresets.LOW_QUALITY,
-              isMeteringEnabled: true,
-            });
-            await recording.startAsync();
+            recorder.record();
             await new Promise((r) => setTimeout(r, 400));
-            await recording.stopAndUnloadAsync();
-            const uri = recording.getURI();
+            await recorder.stop();
+            const uri = recorder.uri;
             if (uri && wsRef.current?.readyState === WebSocket.OPEN) {
-              const response = await fetch(uri);
-              const buffer = await response.arrayBuffer();
-              const bytes = new Uint8Array(buffer);
-              let binary = '';
-              for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
-              const base64Data = btoa(binary);
+              const base64Data = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
               wsRef.current.send(
                 JSON.stringify({
                   realtimeInput: {
@@ -248,19 +250,39 @@ export default function LiveRoomScreen() {
             await new Promise((r) => setTimeout(r, 500));
           }
         }
+        recorder.stop().catch(() => {});
       };
       loop();
     })();
 
     return () => {
       active = false;
-      recordingRef.current?.stopAndUnloadAsync().catch(() => {});
     };
   }, [roomState, isMicMuted, pitchConfig?.micEnabled]);
 
   const startSession = async () => {
-    if (!cameraPermission?.granted) await requestCameraPermission();
-    if (!micPermission?.granted) await requestMicPermission();
+    if (pitchConfig?.micEnabled && !micPermission?.granted) {
+      const mic = await requestMicPermission();
+      if (!mic?.granted) {
+        Alert.alert('Microphone required', 'Allow microphone access to start your pitch.');
+        return;
+      }
+    }
+    if (pitchConfig?.cameraEnabled && !cameraPermission?.granted) {
+      const cam = await requestCameraPermission();
+      if (!cam?.granted) {
+        Alert.alert(
+          'Camera optional',
+          'Camera was denied. You can still pitch with voice and deck slides.',
+          [{ text: 'Continue', onPress: () => setRoomState('countdown') }]
+        );
+        return;
+      }
+    }
+    if (!isConnected) {
+      Alert.alert('Connecting…', 'Still connecting to the AI server. Wait a moment and try again.');
+      return;
+    }
     setRoomState('countdown');
   };
 
@@ -281,7 +303,9 @@ export default function LiveRoomScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Live Pitch</Text>
         <Text style={styles.timer}>{formatTime(timeLeft)}</Text>
-        <Text style={styles.status}>{isConnected ? 'Connected' : 'Connecting…'}</Text>
+        <Text style={[styles.status, isConnected && styles.statusLive]}>
+          {isConnected ? 'Live' : 'Connecting…'}
+        </Text>
       </View>
 
       {roomState === 'waiting' && (
@@ -379,11 +403,12 @@ export default function LiveRoomScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0f172a', padding: spacing.md },
+  safe: { flex: 1, backgroundColor: colors.roomBg, padding: spacing.md },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   title: { color: '#fff', fontWeight: '800', fontSize: 18 },
   timer: { color: '#38bdf8', fontWeight: '800' },
-  status: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
+  status: { color: colors.roomMuted, fontSize: 12, fontWeight: '700' },
+  statusLive: { color: colors.accent },
   centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.lg },
   readyTitle: { color: '#fff', fontSize: 24, fontWeight: '800', textAlign: 'center' },
   readyText: { color: '#94a3b8', textAlign: 'center', lineHeight: 22 },

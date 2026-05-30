@@ -2,18 +2,18 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { colors, radius, spacing } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, uploadDeck } from '../lib/utils';
 import type { Deck } from '../types';
-import type { RootStackParamList } from '../navigation/types';
+import type { MainTabParamList } from '../navigation/types';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 export default function DecksScreen() {
   const { authFetch, token } = useAuth();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -83,7 +83,14 @@ export default function DecksScreen() {
               </Text>
             </View>
             <View style={styles.actions}>
-              <Pressable onPress={() => navigation.navigate('Setup', { preSelectedDeckId: deck.id })}>
+              <Pressable
+                onPress={() =>
+                  navigation.navigate('Pitch', {
+                    screen: 'Setup',
+                    params: { preSelectedDeckId: deck.id },
+                  })
+                }
+              >
                 <Text style={styles.link}>Pitch</Text>
               </Pressable>
               <Pressable onPress={() => removeDeck(deck)}>

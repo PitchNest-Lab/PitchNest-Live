@@ -1,18 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { colors, radius, spacing } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, gradients, radius, shadow, spacing } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
+import { useRootNavigation } from '../hooks/useRootNavigation';
 import { formatDate, getOverallScore, getSessionStatus } from '../lib/utils';
-import type { RootStackParamList } from '../navigation/types';
+import type { MainTabParamList } from '../navigation/types';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { Session } from '../types';
 
 export default function HomeScreen() {
   const { user, authFetch } = useAuth();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const { navigateRoot } = useRootNavigation();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,11 +38,11 @@ export default function HomeScreen() {
 
   return (
     <Screen title={`Hi, ${user?.name?.split(' ')[0] || 'Founder'}`} subtitle="Ready to practice your pitch?" loading={loading}>
-      <View style={styles.card}>
+      <LinearGradient colors={[...gradients.hero]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
         <Text style={styles.cardTitle}>Start a live pitch</Text>
-        <Text style={styles.cardText}>Voice + deck slides + AI panel. No screen sharing on mobile.</Text>
-        <Button title="Configure Pitch" onPress={() => navigation.navigate('Setup')} />
-      </View>
+        <Text style={styles.cardText}>Voice, deck slides, and AI panel feedback. Built for mobile.</Text>
+        <Button title="Start live pitch" onPress={() => navigation.navigate('Pitch', { screen: 'Setup' })} />
+      </LinearGradient>
 
       <Text style={styles.sectionTitle}>Recent sessions</Text>
       {sessions.length === 0 ? (
@@ -53,7 +56,7 @@ export default function HomeScreen() {
             <Pressable
               key={session.id}
               style={styles.sessionCard}
-              onPress={() => navigation.navigate('Report', { sessionId: session.id })}
+              onPress={() => navigateRoot('Report', { sessionId: session.id })}
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.sessionName}>{session.business_name || 'Pitch Session'}</Text>
@@ -73,10 +76,10 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.primary,
     borderRadius: radius.xl,
     padding: spacing.lg,
     gap: 10,
+    ...shadow.card,
   },
   cardTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
   cardText: { color: '#e0f2fe', lineHeight: 20 },

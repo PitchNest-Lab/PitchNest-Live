@@ -1,5 +1,5 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
-import type { PitchConfig, Session } from '../types';
+import type { PitchStackParamList } from './PitchStack';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -9,7 +9,7 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Pitch: undefined;
+  Pitch: NavigatorScreenParams<PitchStackParamList> | undefined;
   Decks: undefined;
   History: undefined;
   Profile: undefined;
@@ -19,8 +19,6 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Onboarding: undefined;
   MainTabs: NavigatorScreenParams<MainTabParamList>;
-  Setup: { preSelectedDeckId?: number } | undefined;
-  LiveRoom: undefined;
   Report: { sessionId?: number };
   Privacy: undefined;
   Terms: undefined;
@@ -34,5 +32,4 @@ declare global {
   }
 }
 
-export type SetupRouteParams = { preSelectedDeckId?: number };
 export type ReportRouteParams = { sessionId?: number };

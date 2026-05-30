@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "pitchnest",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0ea5e9"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pitchnest.app",
@@ -37,6 +31,14 @@
       ]
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0ea5e9",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ],
       "expo-secure-store",
       [
         "expo-camera",
@@ -46,7 +48,8 @@
           "recordAudioAndroid": true
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-audio"
     ],
     "extra": {
       "eas": {
