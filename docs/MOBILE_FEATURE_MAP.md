@@ -267,14 +267,14 @@ How each **current web feature** should change for iOS/Android. Companion to [MO
 
 ## Engineering checklist (start here)
 
-- [ ] Add `mobile/` Expo app with tab navigation mirroring routes above  
-- [ ] `authFetch` equivalent with secure token + configurable API host  
-- [ ] Port `pitchConfig` types from `PrePitchSetup` / `sessionStorage` pattern  
-- [ ] Build `DeckSlideViewer` component (replaces `useScreenCapture`)  
-- [ ] Connect `LivePitchRoom` logic to native camera/mic (spike on one device)  
+- [x] Add `mobile/` Expo app with tab navigation mirroring routes above  
+- [x] `authFetch` equivalent with secure token + configurable API host  
+- [x] Port `pitchConfig` types from `PrePitchSetup` / sessionStorage pattern  
+- [x] Build `DeckSlideViewer` component (replaces `useScreenCapture`)  
+- [x] Connect live room logic to native camera/mic (Expo camera + AV)  
 - [ ] Backend: deck thumbnail extraction on upload (optional but helps mobile a lot)  
-- [ ] Remove or hide screen-share from mobile setup UI  
-- [ ] Bundle panelist avatars; drop Unsplash dependency on mobile  
+- [x] Remove or hide screen-share from mobile setup UI  
+- [x] Bundle panelist avatars; drop Unsplash dependency on mobile  
 
 ---
 

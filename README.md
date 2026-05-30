@@ -59,6 +59,9 @@ PitchNest-Live/
 │   │   ├── middleware/      # Auth, error handling
 │   │   └── config/         # Supabase, environment config
 │   └── server.ts           # Entry point
+├── mobile/                 # Expo React Native app (iOS + Android)
+│   └── src/                # Auth, tabs, live pitch room, legal screens
+├── docs/                   # Mobile store plan, compliance, feature map
 └── README.md
 ```
 
@@ -133,6 +136,16 @@ npm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser. Allow camera and microphone permissions when prompted.
+
+### Mobile app (Expo)
+
+```bash
+cd mobile
+npm install
+npm start
+```
+
+See [`mobile/README.md`](mobile/README.md) for TestFlight / Play Store build steps. The mobile app uses the same backend API and includes in-app auth, deck upload, live pitch (no screen share), reports, and account deletion.
 
 ## Usage
 

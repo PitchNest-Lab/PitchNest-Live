@@ -71,8 +71,8 @@
 
 | Phase | Focus | ~Duration |
 |-------|--------|-----------|
-| **0** | Agree mobile MVP; privacy/terms pages; account deletion | 1–2 weeks |
-| **1** | Expo scaffold, auth, API integration | 2–3 weeks |
+| **0** | Agree mobile MVP; privacy/terms pages; account deletion | Done |
+| **1** | Expo scaffold, auth, API integration | Done (`mobile/`) |
 | **2** | Pitch room (deck viewer + voice, no screen share) | 3–4 weeks |
 | **3** | Compliance, demo account, privacy labels | 2 weeks |
 | **4** | TestFlight + Play internal test → submit v1.0 | 1–2 weeks |
