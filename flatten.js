@@ -1,35 +1,48 @@
 const fs = require('fs');
 const path = require('path');
 
-// Targets to scan: The backend server and the frontend source folder
-const targets = ['./server.ts', './frontend/src'];
-const outputFile = 'all_code.txt';
+// Targets to scan: The backend server, backend source folder, and frontend source folder
+const targets = [
+  './backend/server.ts',
+  './backend/src',
+  './frontend/src'
+];
+const outputFile = 'all_my_code.txt';
 let output = '';
 
-function scan(target) {
-  if (!fs.existsSync(target)) return;
-  const stat = fs.statSync(target);
+function scan(targetPath) {
+  const absolutePath = path.resolve(targetPath);
+  if (!fs.existsSync(absolutePath)) return;
+  const stat = fs.statSync(absolutePath);
 
   if (stat.isFile()) {
-    // Only grab TypeScript, TSX, and JavaScript files
-    if (target.endsWith('.ts') || target.endsWith('.tsx') || target.endsWith('.js')) {
-      output += `\n\n// ==========================================\n`;
-      output += `// FILE: ${target}\n`;
-      output += `// ==========================================\n\n`;
-      output += fs.readFileSync(target, 'utf-8');
+    const ext = path.extname(absolutePath);
+    // Only grab TypeScript, TSX, JS, JSX, and CSS files
+    if (['.ts', '.tsx', '.js', '.jsx', '.css'].includes(ext)) {
+      output += `\n// Filepath: ${absolutePath}\n\n`;
+      output += fs.readFileSync(absolutePath, 'utf-8');
+      output += `\n`;
     }
     return;
   }
 
-  const files = fs.readdirSync(target);
+  const files = fs.readdirSync(absolutePath);
   for (const file of files) {
-    const fullPath = path.join(target, file);
-    // Ignore heavy build folders and modules
-    if (fullPath.includes('node_modules') || fullPath.includes('.git') || fullPath.includes('dist')) continue;
+    const fullPath = path.join(absolutePath, file);
+    // Ignore heavy folders, build folders, modules, and assets/images
+    if (
+      fullPath.includes('node_modules') || 
+      fullPath.includes('.git') || 
+      fullPath.includes('dist') ||
+      fullPath.includes('uploads') ||
+      fullPath.includes('assets')
+    ) continue;
     scan(fullPath);
   }
 }
 
+console.log('🚀 Gathering all current PitchNest-Live code...');
 targets.forEach(scan);
-fs.writeFileSync(outputFile, output);
-console.log(`✅ Done! Your code is packed into ${outputFile}`);
+
+fs.writeFileSync(outputFile, output.trim());
+console.log(`✅ Success! All current code is packed into: ${outputFile} (${fs.statSync(outputFile).size} bytes)`);
