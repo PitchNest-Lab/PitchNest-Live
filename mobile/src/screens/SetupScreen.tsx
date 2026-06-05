@@ -164,7 +164,10 @@ export default function SetupScreen() {
               style={[styles.deckItem, selectedDeck?.id === deck.id && styles.deckItemActive]}
             >
               <Text style={styles.deckName}>{deck.name}</Text>
-              <Text style={styles.deckMeta}>{deck.status || 'READY'}</Text>
+              <Text style={styles.deckMeta}>
+                {deck.status || 'READY'}
+                {deck.extracted_text ? ' · AI can read this deck' : ' · Re-upload PDF for AI text'}
+              </Text>
             </Pressable>
           ))
         )}

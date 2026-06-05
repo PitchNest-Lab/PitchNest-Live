@@ -35,7 +35,13 @@ export default function DecksScreen() {
   const pickAndUpload = async () => {
     if (!token) return;
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+      type: [
+        'application/pdf',
+        'text/plain',
+        'text/markdown',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      ],
       copyToCacheDirectory: true,
     });
     if (result.canceled || !result.assets?.[0]) return;
@@ -67,7 +73,7 @@ export default function DecksScreen() {
   };
 
   return (
-    <Screen title="Pitch Decks" subtitle="Upload PDF or PowerPoint decks" loading={loading}>
+    <Screen title="Pitch Decks" subtitle="Upload PDF, text, or PowerPoint decks" loading={loading}>
       <Button title={uploading ? 'Uploading…' : 'Upload deck'} onPress={pickAndUpload} loading={uploading} />
       {decks.length === 0 ? (
         <View style={styles.empty}>
@@ -80,6 +86,7 @@ export default function DecksScreen() {
               <Text style={styles.name}>{deck.name}</Text>
               <Text style={styles.meta}>
                 {deck.status || 'READY'} · {formatDate(deck.created_at)} · {deck.size ? `${deck.size} MB` : ''}
+                {deck.extracted_text ? ' · AI readable' : ' · No text extracted'}
               </Text>
             </View>
             <View style={styles.actions}>

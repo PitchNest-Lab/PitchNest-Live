@@ -87,6 +87,20 @@ export async function uploadDeck(token: string, uri: string, name: string, mimeT
   return parseJsonResponse(res);
 }
 
+/** Strip a standard 44-byte WAV header and return raw PCM base64 for Gemini Live. */
+export function wavBase64ToPcmBase64(wavBase64: string): string | null {
+  try {
+    const bytes = base64ToBytes(wavBase64);
+    if (bytes.length <= 44) return null;
+    if (bytes[0] !== 0x52 || bytes[1] !== 0x49 || bytes[2] !== 0x46 || bytes[3] !== 0x46) {
+      return null;
+    }
+    return bytesToBase64(bytes.subarray(44));
+  } catch {
+    return null;
+  }
+}
+
 export function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const chunkSize = 0x8000;

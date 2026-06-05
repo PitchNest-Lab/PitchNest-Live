@@ -12,7 +12,6 @@ import {
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import {
   AudioModule,
-  RecordingPresets,
   createAudioPlayer,
   setAudioModeAsync,
 } from 'expo-audio';
@@ -27,7 +26,8 @@ import { env } from '../config/env';
 import { colors, radius, spacing } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { usePitchConfig } from '../contexts/PitchContext';
-import { formatTime, getPersonas, pcm16ToWavBase64 } from '../lib/utils';
+import { getPitchAudioMimeType, PITCH_AUDIO_PRESET } from '../constants/recording';
+import { formatTime, getPersonas, pcm16ToWavBase64, wavBase64ToPcmBase64 } from '../lib/utils';
 import type { LiveScores, TranscriptEntry } from '../types';
 import type { PitchStackParamList } from '../navigation/PitchStack';
 
@@ -229,7 +229,7 @@ export default function LiveRoomScreen() {
       });
 
       const loop = async () => {
-        const recorder = new AudioModule.AudioRecorder(RecordingPresets.LOW_QUALITY);
+        const recorder = new AudioModule.AudioRecorder(PITCH_AUDIO_PRESET);
         while (active && !isMicMuted) {
           try {
             recorder.record();
@@ -237,11 +237,12 @@ export default function LiveRoomScreen() {
             await recorder.stop();
             const uri = recorder.uri;
             if (uri && wsRef.current?.readyState === WebSocket.OPEN) {
-              const base64Data = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+              const rawBase64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+              const pcmBase64 = wavBase64ToPcmBase64(rawBase64) || rawBase64;
               wsRef.current.send(
                 JSON.stringify({
                   realtimeInput: {
-                    mediaChunks: [{ mimeType: 'audio/mp4', data: base64Data }],
+                    mediaChunks: [{ mimeType: getPitchAudioMimeType(), data: pcmBase64 }],
                   },
                 })
               );
