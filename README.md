@@ -29,6 +29,17 @@ PitchNest is a real-time, multimodal AI platform that simulates a high-stakes ve
 - **Session Recording & Replay** — Review past pitch sessions with full transcript and AI commentary.
 - **Secure Sharing** — Share pitch reports with co-founders, mentors, or accelerators via unique shareable links.
 
+## Recent Enhancements
+
+- **Interactive Notification System** — A real-time header dropdown notification bell using Radix UI that loads, manages, and clears notifications (with automatic navigation to evaluation reports).
+- **Group Bulk Pitch Deletion** — Interactive checkbox row selection on the Dashboard and Archive views to delete multiple pitch records simultaneously with instant database and state updates.
+- **Venture Readiness Analytics Calibration** — Calibrated the scoring formulas (delivery, clarity, scalability, and readiness) to prevent out-of-bounds metrics (e.g. scores exceeding 100/100) and added interactive hover value tooltips on bar charts.
+- **Echo-Free Live Room Audio** — Advanced Web Speech API event-based protection that ignores microphone feedback while the AI is speaking and during a 1.2-second trailing cooldown window, preventing the AI from transcribing its own voice and chatting with itself.
+- **Interruption Support (`stop_audio`)** — Live connection tracking of all active Web Audio context source buffers, enabling instant playback termination and timeline resetting the millisecond the AI is interrupted by user activity.
+- **Real-Time Stream Merging** — Dynamically appends incoming Web Socket text transcript chunks into the active AI message bubble for a fluid, growing chat bubble interface instead of separate single-word nodes.
+- **Direct Pitch Deck Uploading** — Upgraded Pre-Pitch Setup pages to upload local files directly (`/api/upload-deck`) and auto-select them without forcing page redirects, optimizing the onboarding experience.
+- **Editable Profile & Bio Settings** — Profile settings now support modifying names, emails, and bio details, including local Base64 profile photo uploads that sync instantly in real-time across layout headers and sidebars.
+
 ## Tech Stack
 
 | Layer | Technology |
