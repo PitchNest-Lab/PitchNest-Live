@@ -23,7 +23,7 @@ function checkPort(port) {
 
 async function main() {
   const isBackendInUse = await checkPort(3000);
-  const isFrontendInUse = await checkPort(5173);
+  const isFrontendInUse = await checkPort(5174);
 
   let backendProcess = null;
   let frontendProcess = null;
@@ -31,7 +31,7 @@ async function main() {
   if (isBackendInUse && isFrontendInUse) {
     console.log('\n🎉 PitchNest-Live Fullstack is already fully running!');
     console.log('📡 Backend is active on port 3000.');
-    console.log('⚡ Frontend is active on port 5173.');
+    console.log('⚡ Frontend is active on port 5174.');
     process.exit(0);
   }
 
@@ -47,9 +47,9 @@ async function main() {
   }
 
   if (isFrontendInUse) {
-    console.log('\n⚡ Frontend is already running on port 5173. Starting only the backend...');
+    console.log('\n⚡ Frontend is already running on port 5174. Starting only the backend...');
   } else {
-    console.log('⚙️ Starting frontend Vite server on port 5173...');
+    console.log('⚙️ Starting frontend Vite server on port 5174...');
     frontendProcess = spawn('npm', ['run', 'dev'], {
       cwd: './frontend',
       stdio: 'inherit',

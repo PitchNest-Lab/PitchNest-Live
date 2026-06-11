@@ -11,6 +11,12 @@ RUN npm run build
 # Stage 2: Setup the Node.js Backend
 FROM node:22-slim
 WORKDIR /app/backend
+
+# Azure Speech SDK needs CA certs and audio libs on Linux
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
 # Copy only the backend package.json first
 COPY backend/package*.json ./
 RUN npm install
