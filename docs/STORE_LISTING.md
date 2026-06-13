@@ -1,6 +1,6 @@
 # PitchNest — Store Listing Pack (copy & paste)
 
-**Contact / support:** prestonjaysusanto@gmail.com  
+**Contact / support:** pitchnestapp@gmail.com  
 **Age rating:** 13+  
 **Content:** No violence, no profanity, no mature themes  
 **Last updated:** May 29, 2026
@@ -19,7 +19,7 @@ Replace `YOUR_DOMAIN` with your live URL (e.g. Vercel app URL).
 | User Privacy Choices URL (Apple, optional) | `https://YOUR_DOMAIN/delete-account` |
 | Support URL | `https://YOUR_DOMAIN/support` |
 | Marketing URL (optional) | `https://YOUR_DOMAIN` |
-| Support email | `prestonjaysusanto@gmail.com` |
+| Support email | `pitchnestapp@gmail.com` |
 
 ---
 
@@ -68,7 +68,7 @@ PRIVACY & ACCOUNT
 
 Privacy Policy: https://YOUR_DOMAIN/privacy
 Terms of Service: https://YOUR_DOMAIN/terms
-Support: prestonjaysusanto@gmail.com
+Support: pitchnestapp@gmail.com
 
 PitchNest is intended for users age 13 and older.
 ```
@@ -121,7 +121,7 @@ AI disclosure: All investor personas and feedback are AI-generated via Google Ge
 
 Account deletion: Settings → Account → Delete Account, or https://YOUR_DOMAIN/delete-account
 
-Support contact: prestonjaysusanto@gmail.com
+Support contact: pitchnestapp@gmail.com
 ```
 
 ### App Privacy — nutrition labels (summary)
@@ -173,7 +173,7 @@ ACCOUNT & DATA
 • Or delete without the app: https://YOUR_DOMAIN/delete-account
 • Privacy Policy: https://YOUR_DOMAIN/privacy
 
-Support: prestonjaysusanto@gmail.com
+Support: pitchnestapp@gmail.com
 Intended for ages 13+.
 ```
 

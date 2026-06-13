@@ -1,7 +1,7 @@
 # Legal Documentation Audit
 
 **Audit date:** May 29, 2026  
-**Contact:** prestonjaysusanto@gmail.com  
+**Contact:** pitchnestapp@gmail.com  
 **Min age:** 13+ · **Violence/profanity:** None declared
 
 ---
@@ -61,7 +61,7 @@ Shared constants: `frontend/src/lib/legal.ts`
 | Cookies / local storage | Yes |
 | Content rating (no violence/profanity) | Yes |
 | Security & international transfers | Yes |
-| Contact email | prestonjaysusanto@gmail.com |
+| Contact email | pitchnestapp@gmail.com |
 | Cross-links to Terms, Delete, Support | Yes |
 
 ---
@@ -133,7 +133,7 @@ Replace `YOUR_DOMAIN` with production URL before submitting.
 
 ## Email consistency check
 
-All legal surfaces use **prestonjaysusanto@gmail.com** via `CONTACT_EMAIL` in `legal.ts`.  
+All legal surfaces use **pitchnestapp@gmail.com** via `CONTACT_EMAIL` in `legal.ts`.  
 No remaining references to `pitchnest@gmail.com` in the repo.
 
 ---
