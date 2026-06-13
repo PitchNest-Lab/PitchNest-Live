@@ -1,7 +1,7 @@
 # App Store & Google Play — Submission Checklist
 
 **Full copy-paste listings:** see [STORE_LISTING.md](./STORE_LISTING.md)  
-**Contact:** prestonjaysusanto@gmail.com · **Age rating:** 13+ · **Violence/profanity:** None
+**Contact:** pitchnestapp@gmail.com · **Age rating:** 13+ · **Violence/profanity:** None
 
 **Last updated:** May 29, 2026
 
@@ -15,7 +15,7 @@
 | Terms of Service | `https://YOUR_DOMAIN/terms` |
 | Delete Account (Google required) | `https://YOUR_DOMAIN/delete-account` |
 | Support (Apple Support URL) | `https://YOUR_DOMAIN/support` |
-| Support email | `prestonjaysusanto@gmail.com` |
+| Support email | `pitchnestapp@gmail.com` |
 
 **In-app:** Settings → Account → Privacy & Legal / Delete Account
 

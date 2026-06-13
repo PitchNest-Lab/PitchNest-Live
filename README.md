@@ -172,7 +172,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 ## Contact
 
-- **Email:** prestonjaysusanto@gmail.com
+- **Email:** pitchnestapp@gmail.com
 - **WhatsApp:** [+234 905 871 8400](https://wa.me/2349058718400)
 - **Twitter/X:** [@PitchNest](https://x.com/PitchNest)
 
