@@ -31,3 +31,7 @@ uploads/
 # Local Packing Tools / Cache
 all_my_code.txt
 all_code.txt
+
+# IDE / Assistant Files
+.claude/
+.vscode/
