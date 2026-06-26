@@ -35,3 +35,7 @@ all_code.txt
 # IDE / Assistant Files
 .claude/
 .vscode/
+
+# PDFs
+*.pdf
+backend/*.pdf
