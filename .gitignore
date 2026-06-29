@@ -39,3 +39,13 @@ all_code.txt
 # PDFs
 *.pdf
 backend/*.pdf
+
+# Dev scratch / backups (not part of the app)
+bugs fixing/
+PitchNest_Permanent_Voice_Fix_ServerSTT.md
+frontend/frontend_bugs.txt
+hero-mockup.png
+backend/scripts/render-out/
+
+# Local data with user info — must never be committed
+backend/waitlist.json
