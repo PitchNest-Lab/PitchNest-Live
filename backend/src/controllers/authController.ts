@@ -87,7 +87,11 @@ export const signup = async (req: Request, res: Response) => {
       return res.status(500).json({ error: "Signup failed" });
 
     const token = signToken({ id: newUser.id, email: newUser.email });
-    await sendVerificationEmail(newUser.id, email);
+
+    // Don't await — let it run in the background
+    sendVerificationEmail(newUser.id, email).catch((err) => {
+      console.error("Failed to send verification email:", err);
+    });
 
     res.status(201).json({
       user: { id: newUser.id, name: newUser.name, email: newUser.email },
@@ -254,7 +258,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
 
     res.json({
       user: { id: user?.id, name: user?.name, email: user?.email },
-      token:JwtToken,
+      token: JwtToken,
       message: "Email verified successfully",
       redirectTo: user?.onboardingCompleted ? "/dashboard" : "/onboarding",
     });
@@ -267,7 +271,6 @@ export const verifyEmail = async (req: Request, res: Response) => {
 export const resendEmailVerification = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
-
     const { data: user } = await supabase
       .from("users")
       .select("id, isEmailVerified")
@@ -278,10 +281,14 @@ export const resendEmailVerification = async (req: Request, res: Response) => {
     if (user?.isEmailVerified)
       return res.status(400).json({ message: "Already verified" });
 
-    await sendVerificationEmail(user.id, email);
+    // Don't block the response on email delivery
+    sendVerificationEmail(user.id, email).catch((err) => {
+      console.error("Failed to resend verification email:", err);
+    });
+
     res.json({ message: "Verification email resent" });
   } catch (error) {
-    console.error("resend Email veridication  error:", error);
+    console.error("resend Email verification error:", error);
     res.status(500).json({ error: "Failed to process request." });
   }
 };
