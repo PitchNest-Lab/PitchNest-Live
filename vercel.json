@@ -3,6 +3,22 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "echo 'Skipping root install'",
   "framework": null,
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://pitchnest-live.onrender.com/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
