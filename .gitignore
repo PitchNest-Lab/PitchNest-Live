@@ -40,6 +40,9 @@ all_code.txt
 *.pdf
 backend/*.pdf
 
+# Internal docs — local only, never pushed
+docs/
+
 # Dev scratch / backups (not part of the app)
 bugs fixing/
 PitchNest_Permanent_Voice_Fix_ServerSTT.md
