@@ -42,6 +42,14 @@ backend/*.pdf
 
 # Internal docs — local only, never pushed
 docs/
+pitchnest-architecture.html
+pitchnest-architecture.mermaid
+assets/*.docx
+assets/pitchnest_agent_brief.md
+
+# MS Office lock files
+~$*
+assets/~$*
 
 # Dev scratch / backups (not part of the app)
 bugs fixing/
