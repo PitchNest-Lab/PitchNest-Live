@@ -253,7 +253,9 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 - **Email:** pitchnestapp@gmail.com
 - **WhatsApp:** [+234 905 871 8400](https://wa.me/2349058718400)
-- **Twitter/X:** [@PitchNest](https://x.com/PitchNest)
+- **Twitter/X:** [@pitchnestapp](https://x.com/pitchnestapp)
+- **Instagram:** [@pitchnestapp](https://instagram.com/pitchnestapp)
+- **Facebook:** [@pitchnestapp](https://facebook.com/pitchnestapp)
 
 ---
 
