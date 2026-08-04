@@ -42,6 +42,13 @@ backend/*.pdf
 
 # Internal docs — local only, never pushed
 docs/
+!docs/MOBILE_*.md
+!docs/APP_STORE_COMPLIANCE.md
+!docs/STORE_LISTING.md
+
+# Mobile app
+mobile/node_modules/
+mobile/.env
 pitchnest-architecture.html
 pitchnest-architecture.mermaid
 assets/*.docx

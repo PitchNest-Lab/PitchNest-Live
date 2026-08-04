@@ -40,6 +40,7 @@ voices** — all with low enough latency to feel like a real conversation.
 - **Session History & Replay** — Revisit past sessions with full transcript and AI commentary.
 - **PDF Export & Secure Sharing** — Generate a downloadable PDF of any report and share it via link.
 - **Accounts & Profiles** — JWT auth with email verification, password reset, editable profile/bio, and onboarding flow.
+- **Native Mobile App** — Expo React Native app for iOS and Android (`mobile/`) sharing the same backend and live pitch WebSocket protocol.
 
 ## Architecture
 
@@ -105,6 +106,9 @@ PitchNest-Live/
 │   │   └── utils/             # Mailer, sanitizers
 │   ├── server.ts              # HTTP + WebSocket entry point
 │   └── .env.example           # Environment template
+├── mobile/                    # Expo React Native app (iOS + Android)
+│   └── src/                   # Auth, tabs, live pitch room, legal screens
+├── docs/                      # Mobile store plan, compliance, build guide
 ├── dev.js                     # Runs frontend + backend together
 ├── Dockerfile                 # Multi-stage build (frontend → backend)
 └── package.json               # Root orchestration scripts
@@ -200,6 +204,15 @@ npm run dev --prefix frontend
 Open [http://localhost:5174](http://localhost:5174) and allow microphone access
 when prompted.
 
+### Mobile app
+
+```bash
+npm install --prefix mobile
+npm run mobile
+```
+
+See [mobile/README.md](mobile/README.md) and [docs/MOBILE_BUILD_GUIDE.md](docs/MOBILE_BUILD_GUIDE.md) for TestFlight and Play Store builds.
+
 ## Usage
 
 1. **Sign up** and verify your email, then complete onboarding.
@@ -236,8 +249,10 @@ frontend, plus configs for a split Vercel + Render deployment.
 | frontend | `npm run dev` | Vite dev server on port 5174 |
 | frontend | `npm run build` | Production build to `frontend/dist` |
 | frontend | `npm run preview` | Preview the production build |
+| mobile | `npm run mobile` | Start Expo dev server |
+| mobile | `npm run mobile:smoke` | Smoke test production API endpoints |
 
-## Contributing
+## Branches
 
 1. Fork the repository.
 2. Create a feature branch (`git checkout -b feature/your-feature`).

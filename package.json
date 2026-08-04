@@ -2,7 +2,9 @@
   "scripts": {
     "dev": "node dev.js",
     "build": "npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend",
-    "start": "npm start --prefix backend"
+    "start": "npm start --prefix backend",
+    "mobile": "npm start --prefix mobile",
+    "mobile:smoke": "node mobile/scripts/smoke-test-api.mjs"
   },
   "dependencies": {
     "cors": "^2.8.6",
