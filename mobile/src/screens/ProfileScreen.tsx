@@ -51,7 +51,7 @@ export default function ProfileScreen() {
       <View style={styles.card}>
         <Text style={styles.name}>{user?.name}</Text>
         <Text style={styles.email}>{user?.email}</Text>
-        <Text style={styles.freeBadge}>Free app · No subscriptions</Text>
+        <Text style={styles.freeBadge}>Free to start</Text>
       </View>
 
       <Text style={styles.section}>Legal & support</Text>

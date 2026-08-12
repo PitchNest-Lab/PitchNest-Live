@@ -199,6 +199,14 @@ export default function LiveRoomScreen() {
         if (data.type === 'error') {
           if (data.code === 'AUTH_FAILED' || data.code === 'AUTH_REQUIRED') {
             Alert.alert('Session expired', 'Please log in again and restart your pitch.');
+          } else if (data.code === 'PLAN_QUOTA_EXCEEDED') {
+            // The quota is enforced server-side at client_ready, so it applies
+            // to this app too. There is no in-app purchase — upgrades happen on
+            // the web — so this only explains and exits.
+            Alert.alert(
+              'Weekly limit reached',
+              data.message || "You've used your free sessions for this week.",
+            );
           } else {
             Alert.alert('Connection error', data.message || 'AI service unavailable');
           }

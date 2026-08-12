@@ -46,7 +46,7 @@ export default function LoginScreen() {
       subtitle="Log in to practice pitches with AI investors and track your progress."
       footer={
         <Text style={styles.footer}>
-          Free app · No subscriptions · {CONTACT_EMAIL}
+          Free to start · {CONTACT_EMAIL}
         </Text>
       }
     >

@@ -11,7 +11,7 @@ Native iOS + Android app (Expo / React Native) for PitchNest pitch practice.
 - Live pitch room: WebSocket + Azure OpenAI / Azure Speech, deck slide viewer, camera, mic, chat
 - Post-pitch reports + session history
 - In-app Privacy, Terms, Support, Delete Account
-- **Free app — no subscriptions**
+- **Free to start**
 
 ## Backend
 

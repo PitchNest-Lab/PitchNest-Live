@@ -7,7 +7,7 @@ export default function TermsScreen() {
   return (
     <LegalScreen title="Terms of Service">
       <LegalSection title="Service">
-        {APP_NAME} provides AI-powered pitch practice tools. The mobile app is free — no subscriptions are required in v1.
+        {APP_NAME} provides AI-powered pitch practice tools. The mobile app is free to start; paid plans are managed on the web.
       </LegalSection>
       <LegalSection title="AI disclaimer">
         All investor personas and feedback are AI-generated simulations. They do not represent real venture capitalists,
