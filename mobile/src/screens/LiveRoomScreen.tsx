@@ -14,8 +14,9 @@ import {
   AudioModule,
   createAudioPlayer,
   setAudioModeAsync,
+  type AudioRecorder,
 } from 'expo-audio';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useRootNavigation } from '../hooks/useRootNavigation';
@@ -46,6 +47,7 @@ export default function LiveRoomScreen() {
   const [chatInput, setChatInput] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
+  const [isCameraAvailable, setIsCameraAvailable] = useState(true);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [activeSpeaker, setActiveSpeaker] = useState('');
   const [scores, setScores] = useState<LiveScores>({
@@ -59,11 +61,15 @@ export default function LiveRoomScreen() {
   const cameraRef = useRef<CameraView>(null);
   const deckRef = useRef<DeckSlideViewerRef>(null);
   const soundQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const audioQueueVersionRef = useRef(0);
+  const stopActivePlaybackRef = useRef<(() => void) | null>(null);
+  const recordingRef = useRef<AudioRecorder | null>(null);
   const pitchStartRef = useRef(0);
   const hasSentReadyRef = useRef(false);
   const endSessionRef = useRef<() => void>(() => {});
 
   const personas = getPersonas(pitchConfig?.investorArchetype || '', pitchConfig?.mode || 'panel');
+  const cameraEnabled = Boolean(pitchConfig?.cameraEnabled && isCameraAvailable);
 
   useEffect(() => {
     if (!pitchConfig) {
@@ -73,18 +79,36 @@ export default function LiveRoomScreen() {
     }
   }, [pitchConfig, navigation]);
 
-  const playPcmAudio = useCallback(async (base64Pcm: string) => {
-    soundQueueRef.current = soundQueueRef.current.then(async () => {
+  const clearAudioQueue = useCallback(() => {
+    audioQueueVersionRef.current += 1;
+    stopActivePlaybackRef.current?.();
+    stopActivePlaybackRef.current = null;
+    soundQueueRef.current = Promise.resolve();
+  }, []);
+
+  const playPcmAudio = useCallback((base64Pcm: string) => {
+    const queueVersion = audioQueueVersionRef.current;
+    soundQueueRef.current = soundQueueRef.current.catch(() => {}).then(async () => {
+      if (queueVersion !== audioQueueVersionRef.current) return;
       try {
         const wavBase64 = pcm16ToWavBase64(base64Pcm, 24000);
         const player = createAudioPlayer({ uri: `data:audio/wav;base64,${wavBase64}` });
         await new Promise<void>((resolve) => {
-          const sub = player.addListener('playbackStatusUpdate', (status) => {
-            if (status.didJustFinish) {
-              sub.remove();
-              player.remove();
-              resolve();
+          let settled = false;
+          let sub: { remove: () => void } | null = null;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            sub?.remove();
+            player.remove();
+            if (stopActivePlaybackRef.current === finish) {
+              stopActivePlaybackRef.current = null;
             }
+            resolve();
+          };
+          stopActivePlaybackRef.current = finish;
+          sub = player.addListener('playbackStatusUpdate', (status) => {
+            if (status.didJustFinish) finish();
           });
           player.play();
         });
@@ -93,6 +117,8 @@ export default function LiveRoomScreen() {
       }
     });
   }, []);
+
+  useEffect(() => clearAudioQueue, [clearAudioQueue]);
 
   const connectSocket = useCallback(() => {
     const ws = new WebSocket(env.wsUrl);
@@ -103,6 +129,10 @@ export default function LiveRoomScreen() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data as string);
+        if (data.type === 'stop_audio') {
+          clearAudioQueue();
+          return;
+        }
         if (data.type === 'transcript' && data.text) {
           setActiveSpeaker(data.speaker || '');
           setMessages((prev) => [
@@ -131,7 +161,7 @@ export default function LiveRoomScreen() {
       }
     };
     return ws;
-  }, [navigateRoot, playPcmAudio]);
+  }, [clearAudioQueue, navigateRoot, playPcmAudio]);
 
   useEffect(() => {
     const ws = connectSocket();
@@ -152,16 +182,23 @@ export default function LiveRoomScreen() {
 
   const endSession = useCallback(() => {
     if (isEvaluating) return;
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      Alert.alert('Connection lost', 'Reconnect to the AI panel before ending this session.');
+      return;
+    }
+
+    clearAudioQueue();
     setIsEvaluating(true);
     const duration = Math.floor((Date.now() - pitchStartRef.current) / 1000);
-    wsRef.current?.send(
+    ws.send(
       JSON.stringify({
         type: 'end_session',
         duration,
         transcript: messages,
       })
     );
-  }, [isEvaluating, messages]);
+  }, [clearAudioQueue, isEvaluating, messages]);
 
   useEffect(() => {
     endSessionRef.current = endSession;
@@ -182,11 +219,16 @@ export default function LiveRoomScreen() {
     wsRef.current.send(
       JSON.stringify({
         type: 'client_ready',
-        config: { ...pitchConfig, userId: user?.id, screenShareEnabled: false },
+        config: {
+          ...pitchConfig,
+          cameraEnabled,
+          userId: user?.id,
+          screenShareEnabled: false,
+        },
       })
     );
     hasSentReadyRef.current = true;
-  }, [roomState, isConnected, pitchConfig, user?.id]);
+  }, [roomState, isConnected, pitchConfig, cameraEnabled, user?.id]);
 
   useEffect(() => {
     if (roomState !== 'live' || !wsRef.current) return;
@@ -196,7 +238,7 @@ export default function LiveRoomScreen() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       const frames: Array<{ mimeType: string; data: string }> = [];
 
-      if (pitchConfig?.cameraEnabled && cameraRef.current) {
+      if (cameraEnabled && cameraRef.current) {
         try {
           const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.35, skipProcessing: true });
           if (photo?.base64) frames.push({ mimeType: 'image/jpeg', data: photo.base64 });
@@ -216,27 +258,32 @@ export default function LiveRoomScreen() {
     }, 4000);
 
     return () => clearInterval(visionInterval);
-  }, [roomState, pitchConfig]);
+  }, [roomState, pitchConfig, cameraEnabled]);
 
   useEffect(() => {
     if (roomState !== 'live' || isMicMuted || !pitchConfig?.micEnabled) return;
 
     let active = true;
-    (async () => {
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
+    const run = async () => {
+      try {
+        await setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
+        });
 
-      const loop = async () => {
-        const recorder = new AudioModule.AudioRecorder(PITCH_AUDIO_PRESET);
-        while (active && !isMicMuted) {
+        while (active) {
+          const recorder = new AudioModule.AudioRecorder(PITCH_AUDIO_PRESET);
+          recordingRef.current = recorder;
           try {
+            await recorder.prepareToRecordAsync();
+            if (!active) break;
+
             recorder.record();
-            await new Promise((r) => setTimeout(r, 400));
+            await new Promise((resolve) => setTimeout(resolve, 400));
             await recorder.stop();
+
             const uri = recorder.uri;
-            if (uri && wsRef.current?.readyState === WebSocket.OPEN) {
+            if (active && uri && wsRef.current?.readyState === WebSocket.OPEN) {
               const rawBase64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
               const pcmBase64 = wavBase64ToPcmBase64(rawBase64) || rawBase64;
               wsRef.current.send(
@@ -248,16 +295,21 @@ export default function LiveRoomScreen() {
               );
             }
           } catch {
-            await new Promise((r) => setTimeout(r, 500));
+            if (active) await new Promise((resolve) => setTimeout(resolve, 500));
+          } finally {
+            if (recordingRef.current === recorder) recordingRef.current = null;
+            await recorder.stop().catch(() => {});
           }
         }
-        recorder.stop().catch(() => {});
-      };
-      loop();
-    })();
+      } catch {
+        // Permission and audio-session failures are surfaced before a session starts.
+      }
+    };
+    void run();
 
     return () => {
       active = false;
+      void recordingRef.current?.stop().catch(() => {});
     };
   }, [roomState, isMicMuted, pitchConfig?.micEnabled]);
 
@@ -272,6 +324,7 @@ export default function LiveRoomScreen() {
     if (pitchConfig?.cameraEnabled && !cameraPermission?.granted) {
       const cam = await requestCameraPermission();
       if (!cam?.granted) {
+        setIsCameraAvailable(false);
         Alert.alert(
           'Camera optional',
           'Camera was denied. You can still pitch with voice and deck slides.',
@@ -331,7 +384,7 @@ export default function LiveRoomScreen() {
             <DeckSlideViewer ref={deckRef} fileUrl={pitchConfig.selectedDeck.file_url} />
           ) : null}
 
-          {pitchConfig.cameraEnabled ? (
+          {cameraEnabled ? (
             <View style={styles.cameraWrap}>
               <CameraView ref={cameraRef} style={styles.camera} facing="front" mode="picture" />
             </View>

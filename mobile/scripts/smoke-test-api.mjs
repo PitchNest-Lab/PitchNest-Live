@@ -3,20 +3,32 @@
  * Run: node scripts/smoke-test-api.mjs
  */
 const API = process.env.EXPO_PUBLIC_API_URL || 'https://pitchnest-live.onrender.com';
+const REQUEST_TIMEOUT_MS = Number(process.env.MOBILE_SMOKE_TIMEOUT_MS || 45000);
 const email = `mobile-smoke-${Date.now()}@pitchnest.test`;
 const password = 'SmokeTest123!';
 const name = 'Mobile Smoke Test';
 
 async function req(path, options = {}) {
-  const res = await fetch(`${API}${path}`, options);
-  const text = await res.text();
-  let data;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
+    const res = await fetch(`${API}${path}`, { ...options, signal: controller.signal });
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+    return { ok: res.ok, status: res.status, data };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request to ${path} timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  return { ok: res.ok, status: res.status, data };
 }
 
 function assert(label, condition, detail = '') {
