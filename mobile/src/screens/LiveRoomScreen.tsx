@@ -32,8 +32,13 @@ import { formatTime, getPersonas, pcm16ToWavBase64, wavBase64ToPcmBase64 } from 
 import type { LiveScores, TranscriptEntry } from '../types';
 import type { PitchStackParamList } from '../navigation/PitchStack';
 
+function buildWsUrl(token: string): string {
+  const separator = env.wsUrl.includes('?') ? '&' : '?';
+  return `${env.wsUrl}${separator}token=${encodeURIComponent(token)}`;
+}
+
 export default function LiveRoomScreen() {
-  const { user } = useAuth();
+  const { user, token, logout } = useAuth();
   const { pitchConfig } = usePitchConfig();
   const navigation = useNavigation<NativeStackNavigationProp<PitchStackParamList>>();
   const { navigateRoot } = useRootNavigation();
@@ -67,9 +72,29 @@ export default function LiveRoomScreen() {
   const pitchStartRef = useRef(0);
   const hasSentReadyRef = useRef(false);
   const endSessionRef = useRef<() => void>(() => {});
+  const messagesRef = useRef<TranscriptEntry[]>([]);
+  const roomStateRef = useRef(roomState);
+  const isEvaluatingRef = useRef(isEvaluating);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectingRef = useRef(false);
+  const shouldReconnectRef = useRef(true);
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
 
   const personas = getPersonas(pitchConfig?.investorArchetype || '', pitchConfig?.mode || 'panel');
   const cameraEnabled = Boolean(pitchConfig?.cameraEnabled && isCameraAvailable);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    roomStateRef.current = roomState;
+  }, [roomState]);
+
+  useEffect(() => {
+    isEvaluatingRef.current = isEvaluating;
+  }, [isEvaluating]);
 
   useEffect(() => {
     if (!pitchConfig) {
@@ -121,10 +146,25 @@ export default function LiveRoomScreen() {
   useEffect(() => clearAudioQueue, [clearAudioQueue]);
 
   const connectSocket = useCallback(() => {
-    const ws = new WebSocket(env.wsUrl);
+    if (!token) return null;
+
+    const ws = new WebSocket(buildWsUrl(token));
     wsRef.current = ws;
-    ws.onopen = () => setIsConnected(true);
-    ws.onclose = () => setIsConnected(false);
+    ws.onopen = () => {
+      reconnectAttemptsRef.current = 0;
+      setIsConnected(true);
+      if (reconnectingRef.current && roomStateRef.current === 'live') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `reconnected-${Date.now()}`,
+            text: 'Connection restored. The panel is resuming your session.',
+            type: 'ai',
+            speaker: 'System',
+          },
+        ]);
+      }
+    };
     ws.onerror = () => setIsConnected(false);
     ws.onmessage = (event) => {
       try {
@@ -154,21 +194,72 @@ export default function LiveRoomScreen() {
           navigateRoot('Report', { sessionId: data.sessionId });
         }
         if (data.type === 'error') {
-          Alert.alert('Connection error', data.message || 'AI service unavailable');
+          if (data.code === 'AUTH_REQUIRED' || data.code === 'AUTH_FAILED') {
+            Alert.alert('Session expired', data.message || 'Please log in again to continue.');
+            void logout();
+          } else if (data.code === 'SESSION_SAVE_FAILED') {
+            setIsEvaluating(false);
+            Alert.alert('Report not saved', data.message || 'Please try the session again.');
+          } else {
+            Alert.alert('Connection error', data.message || 'AI service unavailable');
+          }
         }
       } catch {
         // ignore parse errors
       }
     };
     return ws;
-  }, [clearAudioQueue, navigateRoot, playPcmAudio]);
+  }, [clearAudioQueue, logout, navigateRoot, playPcmAudio, token]);
 
   useEffect(() => {
     const ws = connectSocket();
+    shouldReconnectRef.current = true;
+    if (!ws) return;
+
+    ws.onclose = (event) => {
+      if (wsRef.current === ws) wsRef.current = null;
+      setIsConnected(false);
+      clearAudioQueue();
+      hasSentReadyRef.current = false;
+
+      if (!shouldReconnectRef.current || event.code === 1008) return;
+
+      if (isEvaluatingRef.current) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `report-pending-${Date.now()}`,
+            text: 'Connection lost while your report is saving. Check Pitch History in a moment.',
+            type: 'ai',
+            speaker: 'System',
+          },
+        ]);
+        return;
+      }
+
+      if (reconnectAttemptsRef.current >= 3) {
+        Alert.alert('Connection lost', 'Unable to reconnect to the AI panel. Check your connection and restart the session.');
+        return;
+      }
+
+      const delay = 1000 * 2 ** reconnectAttemptsRef.current;
+      reconnectAttemptsRef.current += 1;
+      reconnectingRef.current = roomStateRef.current === 'live';
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        setConnectionAttempt((attempt) => attempt + 1);
+      }, delay);
+    };
+
     return () => {
+      shouldReconnectRef.current = false;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
     };
-  }, [connectSocket]);
+  }, [clearAudioQueue, connectSocket, connectionAttempt]);
 
   useEffect(() => {
     if (roomState !== 'countdown') return;
@@ -222,13 +313,14 @@ export default function LiveRoomScreen() {
         config: {
           ...pitchConfig,
           cameraEnabled,
-          userId: user?.id,
           screenShareEnabled: false,
+          resumeTranscript: reconnectingRef.current ? messagesRef.current : undefined,
         },
       })
     );
     hasSentReadyRef.current = true;
-  }, [roomState, isConnected, pitchConfig, cameraEnabled, user?.id]);
+    reconnectingRef.current = false;
+  }, [roomState, isConnected, pitchConfig, cameraEnabled]);
 
   useEffect(() => {
     if (roomState !== 'live' || !wsRef.current) return;
