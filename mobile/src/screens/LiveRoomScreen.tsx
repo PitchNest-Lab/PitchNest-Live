@@ -31,6 +31,12 @@ import { formatTime, getPersonas, pcm16ToWavBase64, wavBase64ToPcmBase64 } from 
 import type { LiveScores, TranscriptEntry } from '../types';
 import type { PitchStackParamList } from '../navigation/PitchStack';
 
+/**
+ * AI panel audio is boosted on playback because the mic keeps the audio session
+ * in record mode during the pitch, which attenuates playback volume on iOS.
+ */
+const AI_AUDIO_GAIN = 2;
+
 function buildWsUrl(token: string | null): string {
   if (!token) return env.wsUrl;
   const sep = env.wsUrl.includes('?') ? '&' : '?';
@@ -91,8 +97,9 @@ export default function LiveRoomScreen() {
   const playPcmAudio = useCallback(async (base64Pcm: string) => {
     soundQueueRef.current = soundQueueRef.current.then(async () => {
       try {
-        const wavBase64 = pcm16ToWavBase64(base64Pcm, 24000);
+        const wavBase64 = pcm16ToWavBase64(base64Pcm, 24000, AI_AUDIO_GAIN);
         const player = createAudioPlayer({ uri: `data:audio/wav;base64,${wavBase64}` });
+        player.volume = 1;
         await new Promise<void>((resolve) => {
           const sub = player.addListener('playbackStatusUpdate', (status) => {
             if (status.didJustFinish) {

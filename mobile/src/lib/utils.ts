@@ -133,8 +133,24 @@ export function base64ToBytes(base64: string): Uint8Array {
   throw new Error('Base64 decoding unavailable');
 }
 
-export function pcm16ToWavBase64(pcmBase64: string, sampleRate = 24000): string {
+/**
+ * Wrap raw PCM in a WAV header for playback.
+ *
+ * `gain` scales the 16-bit samples before wrapping (clamped to avoid wraparound).
+ * The live room keeps the audio session in record mode for the mic, which routes
+ * playback through the attenuated voice-call path on iOS — a 2x boost restores a
+ * normal listening level.
+ */
+export function pcm16ToWavBase64(pcmBase64: string, sampleRate = 24000, gain = 1): string {
   const pcmBytes = base64ToBytes(pcmBase64);
+  if (gain !== 1 && pcmBytes.length > 1) {
+    for (let i = 0; i + 1 < pcmBytes.length; i += 2) {
+      const sample = pcmBytes[i] | (pcmBytes[i + 1] << 8);
+      const boosted = Math.max(-32768, Math.min(32767, Math.round(sample * gain)));
+      pcmBytes[i] = boosted & 0xff;
+      pcmBytes[i + 1] = (boosted >> 8) & 0xff;
+    }
+  }
   const header = new ArrayBuffer(44);
   const view = new DataView(header);
   const writeString = (offset: number, str: string) => {
