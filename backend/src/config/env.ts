@@ -32,6 +32,9 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || "pitchnest-dev-secret-change-in-production",
   allowedOrigin: process.env.ALLOWED_ORIGIN || "http://localhost:5173",
   nodeEnv: process.env.NODE_ENV || "development",
+  // Public URL to self-ping so Render's free tier doesn't cold-start before
+  // App Store / Play Store review sessions. Leave unset locally.
+  keepAliveUrl: process.env.KEEP_ALIVE_URL || "",
 };
 
 // Check for critical missing configurations

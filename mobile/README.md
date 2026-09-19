@@ -45,8 +45,11 @@ Update `eas.json` with your Apple Team ID and App Store Connect app ID before su
 
 ## Store checklist
 
+**Full submission runbook: [../docs/PLAY_STORE_READY.md](../docs/PLAY_STORE_READY.md)**
+
 - Bundle ID: `com.pitchnest.app`
 - Privacy policy: in-app + https://pitchnestapp.vercel.app/privacy
 - Delete account: Profile → Delete Account
 - AI disclosure shown in setup and live room
+- Report AI content: "Report" in live room header, "Report this AI feedback" on report screen
 - Demo account for App Review (create in-app or provide credentials in review notes)

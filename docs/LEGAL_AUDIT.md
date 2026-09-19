@@ -105,7 +105,7 @@ Backend: `backend/src/controllers/authController.ts` → `purgeUserAccount()`
 | `docs/STORE_LISTING.md` | Copy-paste descriptions, 13+ rating answers, AI disclosure |
 | `docs/APP_STORE_COMPLIANCE.md` | Checklist + URLs for consoles |
 
-Replace `YOUR_DOMAIN` with production URL before submitting.
+Replace `pitchnestapp.vercel.app` with production URL before submitting.
 
 ---
 
@@ -141,10 +141,10 @@ No remaining references to `pitchnest@gmail.com` in the repo.
 ## Quick test after deploy
 
 ```bash
-curl -I https://YOUR_DOMAIN/privacy
-curl -I https://YOUR_DOMAIN/terms
-curl -I https://YOUR_DOMAIN/delete-account
-curl -I https://YOUR_DOMAIN/support
+curl -I https://pitchnestapp.vercel.app/privacy
+curl -I https://pitchnestapp.vercel.app/terms
+curl -I https://pitchnestapp.vercel.app/delete-account
+curl -I https://pitchnestapp.vercel.app/support
 ```
 
 Then: sign up → Settings → Account → Delete Account (test account only).

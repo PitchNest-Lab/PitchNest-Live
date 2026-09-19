@@ -8,6 +8,7 @@ import deckRoutes from "./routes/deckRoutes.ts";
 import uploadRoutes from "./routes/uploadRoutes.ts";
 import sessionRoutes from "./routes/sessionRoutes.ts";
 import profileRoutes from "./routes/profileRoutes.ts";
+import reportRoutes from "./routes/reportRoutes.ts";
 import { handleWaitlist } from "./controllers/waitlistController.ts";
 
 const app = express();
@@ -43,6 +44,7 @@ app.use("/api/decks", deckRoutes);
 app.use("/api", uploadRoutes); // Hooks /api/upload-video and /api/upload-deck directly
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/reports", reportRoutes);
 app.post("/api/waitlist", handleWaitlist);
 
 // Health check endpoint

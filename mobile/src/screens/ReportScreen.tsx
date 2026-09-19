@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
 import { ScoreBars } from '../components/ScoreBars';
+import { ReportContentModal } from '../components/ReportContentModal';
 import { colors, radius, spacing } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { getOverallScore } from '../lib/utils';
@@ -14,6 +15,7 @@ export default function ReportScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Report'>>();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reportVisible, setReportVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -79,6 +81,14 @@ export default function ReportScreen() {
           <Text style={styles.disclaimer}>
             AI-generated feedback only. Not financial advice or a real investment offer.
           </Text>
+          <Pressable onPress={() => setReportVisible(true)}>
+            <Text style={styles.reportLink}>Report this AI feedback</Text>
+          </Pressable>
+          <ReportContentModal
+            visible={reportVisible}
+            onClose={() => setReportVisible(false)}
+            sessionId={String(session.id)}
+          />
         </>
       )}
     </Screen>
@@ -100,4 +110,5 @@ const styles = StyleSheet.create({
   body: { color: '#334155', lineHeight: 22 },
   listItem: { color: '#334155', lineHeight: 22 },
   disclaimer: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
+  reportLink: { color: colors.primary, fontSize: 13, fontWeight: '700', textAlign: 'center' },
 });

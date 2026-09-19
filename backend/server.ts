@@ -4,6 +4,7 @@ import { config } from "./src/config/env.ts";
 import app from "./src/app.ts";
 import { initLiveSocket } from "./src/sockets/liveSocket.ts";
 import { checkApiKeyStatus } from "./src/services/aiService.ts";
+import { startKeepAlive } from "./src/services/keepAliveService.ts";
 
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
@@ -18,4 +19,6 @@ server.listen(config.port, "0.0.0.0", async () => {
   
   // Proactively check Gemini API health
   await checkApiKeyStatus();
+
+  startKeepAlive();
 });

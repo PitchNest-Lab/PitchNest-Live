@@ -7,14 +7,14 @@
 
 ---
 
-## Public URLs (replace `YOUR_DOMAIN`)
+## Public URLs (replace `pitchnestapp.vercel.app`)
 
 | Purpose | URL |
 |---------|-----|
-| Privacy Policy | `https://YOUR_DOMAIN/privacy` |
-| Terms of Service | `https://YOUR_DOMAIN/terms` |
-| Delete Account (Google required) | `https://YOUR_DOMAIN/delete-account` |
-| Support (Apple Support URL) | `https://YOUR_DOMAIN/support` |
+| Privacy Policy | `https://pitchnestapp.vercel.app/privacy` |
+| Terms of Service | `https://pitchnestapp.vercel.app/terms` |
+| Delete Account (Google required) | `https://pitchnestapp.vercel.app/delete-account` |
+| Support (Apple Support URL) | `https://pitchnestapp.vercel.app/support` |
 | Support email | `prestonjaysusanto@gmail.com` |
 
 **In-app:** Settings → Account → Privacy & Legal / Delete Account
@@ -22,6 +22,8 @@
 ---
 
 ## Quick status
+
+**Full step-by-step runbook: [PLAY_STORE_READY.md](./PLAY_STORE_READY.md)**
 
 | Requirement | Status |
 |-------------|--------|
@@ -31,8 +33,11 @@
 | Support page | Done — `/support` |
 | Store descriptions & AI disclosure | Done — `STORE_LISTING.md` |
 | Age 13+ rating answers | Done — `STORE_LISTING.md` |
+| In-app report/flag for AI content (Play policy requirement) | Done — see `PLAY_STORE_READY.md` §1 |
+| Render cold-start keep-alive | Done — set `KEEP_ALIVE_URL` env var before submit |
 | App Privacy / Data safety forms | **Paste answers in consoles** |
-| Demo account for Apple | **You create** |
+| Demo account for Apple/Google review | **You create** |
+| Screenshots + feature graphic | **You create** |
 | Deploy to production | **Required before submit** |
 
 ---
@@ -76,7 +81,7 @@ References: [Account deletion](https://support.google.com/googleplay/android-dev
 ## Before you submit
 
 1. Deploy frontend + backend  
-2. Replace `YOUR_DOMAIN` in STORE_LISTING.md with live URL  
+2. Replace `pitchnestapp.vercel.app` in STORE_LISTING.md with live URL  
 3. Copy descriptions into App Store Connect & Play Console  
 4. Create demo account for Apple Review  
-5. Test `https://YOUR_DOMAIN/delete-account` on production  
+5. Test `https://pitchnestapp.vercel.app/delete-account` on production  

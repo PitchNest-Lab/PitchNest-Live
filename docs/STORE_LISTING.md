@@ -5,7 +5,7 @@
 **Content:** No violence, no profanity, no mature themes  
 **Last updated:** May 29, 2026
 
-Replace `YOUR_DOMAIN` with your live URL (e.g. Vercel app URL).
+Replace `pitchnestapp.vercel.app` with your live URL (e.g. Vercel app URL).
 
 ---
 
@@ -13,12 +13,12 @@ Replace `YOUR_DOMAIN` with your live URL (e.g. Vercel app URL).
 
 | Field | Value |
 |-------|--------|
-| Privacy Policy | `https://YOUR_DOMAIN/privacy` |
-| Terms of Service | `https://YOUR_DOMAIN/terms` |
-| Delete Account URL (Google Play **required**) | `https://YOUR_DOMAIN/delete-account` |
-| User Privacy Choices URL (Apple, optional) | `https://YOUR_DOMAIN/delete-account` |
-| Support URL | `https://YOUR_DOMAIN/support` |
-| Marketing URL (optional) | `https://YOUR_DOMAIN` |
+| Privacy Policy | `https://pitchnestapp.vercel.app/privacy` |
+| Terms of Service | `https://pitchnestapp.vercel.app/terms` |
+| Delete Account URL (Google Play **required**) | `https://pitchnestapp.vercel.app/delete-account` |
+| User Privacy Choices URL (Apple, optional) | `https://pitchnestapp.vercel.app/delete-account` |
+| Support URL | `https://pitchnestapp.vercel.app/support` |
+| Marketing URL (optional) | `https://pitchnestapp.vercel.app` |
 | Support email | `prestonjaysusanto@gmail.com` |
 
 ---
@@ -64,10 +64,10 @@ IMPORTANT
 PRIVACY & ACCOUNT
 • Camera and microphone are used only when you start a pitch session (with your permission)
 • You can delete your account and data anytime in Settings → Account → Delete Account, or at:
-  https://YOUR_DOMAIN/delete-account
+  https://pitchnestapp.vercel.app/delete-account
 
-Privacy Policy: https://YOUR_DOMAIN/privacy
-Terms of Service: https://YOUR_DOMAIN/terms
+Privacy Policy: https://pitchnestapp.vercel.app/privacy
+Terms of Service: https://pitchnestapp.vercel.app/terms
 Support: prestonjaysusanto@gmail.com
 
 PitchNest is intended for users age 13 and older.
@@ -100,6 +100,7 @@ When completing the questionnaire, answer consistently:
 | Gambling | None |
 | Unrestricted web access | No (or Yes only if you open external links—landing/legal pages) |
 | User-generated content | Yes — pitch decks and session content (moderated by account owner only) |
+| In-app reporting for AI content | Yes — "Report" in live room and "Report this AI feedback" on the post-pitch report |
 
 **Result:** Rated **13+** (Teen). No violent language or imagery in the app.
 
@@ -119,7 +120,7 @@ How to test:
 
 AI disclosure: All investor personas and feedback are AI-generated via Google Gemini. They are not real people.
 
-Account deletion: Settings → Account → Delete Account, or https://YOUR_DOMAIN/delete-account
+Account deletion: Settings → Account → Delete Account, or https://pitchnestapp.vercel.app/delete-account
 
 Support contact: prestonjaysusanto@gmail.com
 ```
@@ -170,8 +171,8 @@ PitchNest is an educational practice tool. It does not provide investment advice
 ACCOUNT & DATA
 • Sign up with email and password
 • Delete your account in-app: Settings → Account → Delete Account
-• Or delete without the app: https://YOUR_DOMAIN/delete-account
-• Privacy Policy: https://YOUR_DOMAIN/privacy
+• Or delete without the app: https://pitchnestapp.vercel.app/delete-account
+• Privacy Policy: https://pitchnestapp.vercel.app/privacy
 
 Support: prestonjaysusanto@gmail.com
 Intended for ages 13+.
@@ -191,7 +192,7 @@ Tags: Business, Education, Productivity
 | Does your app collect or share user data? | Yes |
 | Is all data encrypted in transit? | Yes |
 | Can users request data deletion? | Yes |
-| Account deletion URL | `https://YOUR_DOMAIN/delete-account` |
+| Account deletion URL | `https://pitchnestapp.vercel.app/delete-account` |
 | Email address | Collected, optional, account management |
 | Name | Collected, optional, account management |
 | User-generated content | Collected, optional, app functionality |
@@ -201,6 +202,7 @@ Tags: Business, Education, Productivity
 | Data shared with third parties | Yes — Google (AI processing), Supabase (hosting) |
 | Purpose | App functionality, account management |
 | AI-generated content in app? | Yes — disclose in listing |
+| In-app mechanism to report AI content? | Yes — "Report" button in live room and post-pitch report, `POST /api/reports` |
 
 ### Content rating (IARC) — expect **PEGI 13 / Teen**
 
@@ -224,7 +226,7 @@ Tags: Business, Education, Productivity
 
 **Google Play Delete Account URL field:**
 ```
-https://YOUR_DOMAIN/delete-account
+https://pitchnestapp.vercel.app/delete-account
 ```
 
 That page lets users enter email + password to permanently delete their account without reinstalling the app.
@@ -264,7 +266,7 @@ Practice your pitch. Get AI feedback.
 
 ## Checklist before submit
 
-- [ ] Replace `YOUR_DOMAIN` everywhere in this doc with live URL
+- [ ] Replace `pitchnestapp.vercel.app` everywhere in this doc with live URL
 - [ ] Deploy latest code (legal pages + delete API)
 - [ ] Create demo account for Apple review
 - [ ] Test `/delete-account` on production

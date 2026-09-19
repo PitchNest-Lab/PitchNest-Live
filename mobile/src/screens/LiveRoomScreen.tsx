@@ -23,6 +23,7 @@ import { useRootNavigation } from '../hooks/useRootNavigation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { DeckSlideViewer, DeckSlideViewerRef } from '../components/DeckSlideViewer';
+import { ReportContentModal } from '../components/ReportContentModal';
 import { env } from '../config/env';
 import { colors, radius, spacing } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
@@ -55,6 +56,8 @@ export default function LiveRoomScreen() {
   const [isCameraAvailable, setIsCameraAvailable] = useState(true);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [activeSpeaker, setActiveSpeaker] = useState('');
+  const [reportVisible, setReportVisible] = useState(false);
+  const [lastSessionId, setLastSessionId] = useState<string | null>(null);
   const [scores, setScores] = useState<LiveScores>({
     clarity: null,
     confidence: null,
@@ -191,6 +194,7 @@ export default function LiveRoomScreen() {
         }
         if (data.type === 'report') {
           setIsEvaluating(false);
+          setLastSessionId(data.sessionId || null);
           navigateRoot('Report', { sessionId: data.sessionId });
         }
         if (data.type === 'error') {
@@ -452,7 +456,16 @@ export default function LiveRoomScreen() {
         <Text style={[styles.status, isConnected && styles.statusLive]}>
           {isConnected ? 'Live' : 'Connecting…'}
         </Text>
+        <Pressable onPress={() => setReportVisible(true)} hitSlop={8}>
+          <Text style={styles.reportLink}>Report</Text>
+        </Pressable>
       </View>
+
+      <ReportContentModal
+        visible={reportVisible}
+        onClose={() => setReportVisible(false)}
+        sessionId={lastSessionId}
+      />
 
       {roomState === 'waiting' && (
         <View style={styles.centerBox}>
@@ -555,6 +568,7 @@ const styles = StyleSheet.create({
   timer: { color: '#38bdf8', fontWeight: '800' },
   status: { color: colors.roomMuted, fontSize: 12, fontWeight: '700' },
   statusLive: { color: colors.accent },
+  reportLink: { color: colors.roomMuted, fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
   centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.lg },
   readyTitle: { color: '#fff', fontSize: 24, fontWeight: '800', textAlign: 'center' },
   readyText: { color: '#94a3b8', textAlign: 'center', lineHeight: 22 },
