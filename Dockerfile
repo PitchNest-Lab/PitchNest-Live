@@ -21,9 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/package*.json ./
 RUN npm install
 
-# 🔥 FIX 1: Explicitly install the packages missing from your package.json
-RUN npm install @google-cloud/storage better-sqlite3 tsx
-
 # Copy the rest of the backend code
 COPY backend/ ./
 
