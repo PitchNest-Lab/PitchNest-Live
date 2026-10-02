@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# Environments & Python
+.venv/
+venv/
+env/
+ENV/
+.env*
+!.env.example
+backend/.env*
+!backend/.env.example
+frontend/.env*
+!frontend/.env.example
+
+# AI / IDE tooling
+.claude/
+.gemini/
+.vscode/
+*.tsbuildinfo
+
+# Build & Dist
+dist/
+*/dist/
+build/
+*/build/
+audit_build/
+coverage/
+.vercel/
+
+# Runtime & Uploads
+backend/uploads/
+backend/test-report.pdf
+backend/scripts/render-out/
+backend/waitlist.json
+
+# OS files & temp documents
+.DS_Store
+Thumbs.db
+~$*.docx
+~$*.xlsx
+*.tmp
+*.log
+
+# Certs
+.cert/
+*/.cert/
