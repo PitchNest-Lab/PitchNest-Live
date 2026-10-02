@@ -48,3 +48,10 @@ Thumbs.db
 # Certs
 .cert/
 */.cert/
+
+# Scratch & local notes
+all_my_code.txt
+bugs fixing/
+*_bugs.txt
+*.mermaid
+
